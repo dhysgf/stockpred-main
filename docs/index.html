@@ -65,7 +65,6 @@ a.link:hover{text-decoration:underline}
   <a href="index.html" class="on">首页</a>
   <a href="live.html">实时看板</a>
   <a href="rank.html">涨幅榜</a>
-  <a href="daily.html">日线分析</a>
 </div>
 
 <h1>A 股实时预测系统</h1>
@@ -148,11 +147,11 @@ python run.py --sync-db 600519    # 同步日线与指标入库</pre>
 <div class="card">
   <div class="old">
     <div>
-      <h2 style="margin-bottom:4px">日线多模型决策 <span class="tiny" style="font-weight:400">另一套系统</span></h2>
-      <div class="muted">用多模型融合 + 8 路信号给出 5 / 7 / 30 个交易日的目标区间与买卖点。
-        <b>与这里的实时 14 路不是同一组信号</b>，两套权重各自独立标定。</div>
+      <h2 style="margin-bottom:4px">站点范围 <span class="tiny" style="font-weight:400">只讲实时系统</span></h2>
+      <div class="muted">本站只展示实时分钟级预测这一套：14 路专家、Hedge 在线加权、到期结算、涨幅榜爬虫。
+        日线多模型报告已从站点下线，相关代码仍在仓库里（<code>run.py</code> / <code>make_report.py</code>），
+        本地跑 <code>python web.py</code> 即可生成。</div>
     </div>
-    <a class="link" href="daily.html">进入日线分析 →</a>
   </div>
 </div>
 

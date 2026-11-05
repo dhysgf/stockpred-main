@@ -34,7 +34,6 @@ NAV = """<div class="nav">
   <a href="index.html">首页</a>
   <a href="live.html">实时看板</a>
   <a href="rank.html" class="on">涨幅榜</a>
-  <a href="daily.html">日线分析</a>
 </div>"""
 
 

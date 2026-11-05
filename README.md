@@ -128,15 +128,24 @@ python web.py --port 8010         # 主入口：/live 与 /rank 已挂在同一�
 
 👉 **<https://dhysgf.github.io/stockpred-main/>**（已通过 GitHub Pages 发布，源目录 `docs/`）
 
-- `docs/index.html` 落地页：输入 6 位代码 → 打开对应报告或分析页（支持 `?code=600519` 直接分享）
-- `docs/analysis.html` 逐项分析：8 个面板 + 预测图 / K 线图 + 浏览器端复跑研判（支持 `?code=`）
-- `docs/report_*.html` 本地实跑生成的报告（图片 base64 内嵌，单文件可分享）
-- `docs/analysis_snapshot.json` / `news_snapshot.json`：实跑结果与新闻快照
+站点**只收录实时系统**，共三页，全部由本地引擎的真实运行结果固化而成：
+
+- `docs/index.html` 落地页：系统定位、一次 tick 的链路、14 路专家清单、快照机制与部署边界
+- `docs/live.html` 实时看板：当前预测 / 有效权重 / 各路贡献 / 历史命中率与 MAE、预测价 vs 到点真实价、今日结算与区间覆盖率
+- `docs/rank.html` 涨幅榜爬虫：东方财富 A 股 / 科创板 Top50，点行直达对应标的看板
+
+页面不放手工数字，由 `tools/build_live_snapshot.py`、`tools/build_rank_snapshot.py`
+从 `data/stockpred.db` 直接生成，重新出页即可刷新。
+
+> **日线多模型报告已从站点下线**（原 `report_*.html` / `analysis.html` / `news_snapshot.json`）。
+> 那套系统代码仍在仓库里（`run.py` / `make_report.py` / `web.py`），
+> 需要时本地跑 `python web.py` 或 `python run.py --code 600519` 生成，不再占用展示站。
+> 历史报告原件仍留在 `examples/reports/`。
 
 自行部署：仓库 **Settings → Pages → Source 选 `Deploy from a branch` → 分支 `main` / 目录 `/docs`**。
 
-> 静态站没有后端：`/report?code=XXX&refresh=1` 是本地版 `web.py` 的路由形态，Pages 上不存在。
-> 改页面或加报告后跑一次 `python tools/check_docs_links.py`，它会拦下「站内绝对路径」与
+> 静态站没有后端：`/live`、`/rank`、`/report?code=XXX` 是本地版 `web.py` 的路由形态，Pages 上不存在。
+> 改页面后跑一次 `python tools/check_docs_links.py`，它会拦下「站内绝对路径」与
 > 「目标文件不存在」两类必然 404 的链接（Pages 项目站根是 `/<repo>/`，`href="/xxx"` 会绕过前缀）。
 
 > 「Key 留空即用服务器内置 Key」只存在于**本地版** `python web.py`：它按浏览器会话隔离、
@@ -477,7 +486,9 @@ stockpred/
   universe.py             股票池成分获取（沪深300 / 中证500）
   visualize.py            预测图（含拐点竖线与区间带）/ 回测图
 
-docs/                     GitHub Pages 静态展示站
+docs/                     GitHub Pages 站点：首页 / 实时看板 / 涨幅榜（由 tools/ 脚本生成）
+tools/build_live_snapshot.py 从 data/stockpred.db 渲染 docs/live.html
+tools/build_rank_snapshot.py 渲染 docs/rank.html（可 --fetch 现场抓榜）
 data/stockpred.db         SQLite：日线/分钟线/预测/拐点/榜单/大模型配置（自动生成）
 tools/check_docs_links.py 校验 docs/ 站内链接（拦绝对路径与缺失文件，防 404）
 examples/reports/         实跑生成的示例报告（HTML，单文件可分享）

@@ -37,3 +37,6 @@ _r.js
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# ---- 临时抓取/API 结果 ----
+._*

@@ -440,7 +440,6 @@ TMPL = """<!DOCTYPE html>
   <a href="index.html">首页</a>
   <a href="live.html" class="on">实时看板</a>
   <a href="rank.html">涨幅榜</a>
-  <a href="daily.html">日线分析</a>
 </div>
 
 <h1>实时预测看板 · 真实运行快照</h1>
