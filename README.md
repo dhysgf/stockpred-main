@@ -1,10 +1,14 @@
 # stockpred · A 股多信号量化预测系统
 
+[![CI](https://github.com/dhysgf/stockpred-main/actions/workflows/ci.yml/badge.svg)](https://github.com/dhysgf/stockpred-main/actions/workflows/ci.yml)
+[![Pages](https://img.shields.io/badge/demo-GitHub%20Pages-2ca02c)](https://dhysgf.github.io/stockpred-main/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 用**真实公开行情 + 多模型集成 + 多信号联合决策**预测 A 股个股走势，并且**如实披露每一路信号到底有多少预测力**。
 
 本项目的立场：不吹"AI 预测股价"。凡是无法验证的信号，都标明它是辅助；凡是实测无效的周期，代码里直接不给方向。
 
-**在线演示**：<https://dhysgf.github.io/stockpred/>
+**在线演示**：<https://dhysgf.github.io/stockpred-main/>
 
 > ⚠️ 仅供技术研究与学习，**不构成任何投资建议**。股市有风险，盈亏自负。
 
@@ -16,6 +20,7 @@
 - [实时分钟级跟踪（新增）](#实时分钟级跟踪新增)
 - [涨幅榜爬虫（新增）](#涨幅榜爬虫新增)
 - [在线演示](#在线演示)
+- [部署边界：哪些能上 GitHub，哪些不能](#部署边界哪些能上-github哪些不能)
 - [快速开始](#快速开始)
 - [使用方式](#使用方式)
 - [八路信号与联合决策](#八路信号与联合决策)
@@ -121,7 +126,7 @@ python web.py --port 8010         # 主入口：/live 与 /rank 已挂在同一�
 
 ## 在线演示
 
-👉 **<https://dhysgf.github.io/stockpred/>**（已通过 GitHub Pages 发布，源目录 `docs/`）
+👉 **<https://dhysgf.github.io/stockpred-main/>**（已通过 GitHub Pages 发布，源目录 `docs/`）
 
 - `docs/index.html` 落地页：输入 6 位代码 → 打开对应报告或分析页（支持 `?code=600519` 直接分享）
 - `docs/analysis.html` 逐项分析：8 个面板 + 预测图 / K 线图 + 浏览器端复跑研判（支持 `?code=`）
@@ -137,6 +142,37 @@ python web.py --port 8010         # 主入口：/live 与 /rank 已挂在同一�
 > 「Key 留空即用服务器内置 Key」只存在于**本地版** `python web.py`：它按浏览器会话隔离、
 > 内存存放、不落盘。纯静态部署没有服务端，访客必须在页面里自己填 Key 才能跑新闻研判，
 > 其余量化分析（价格 / 形态 / 量能 / 拐点 / 决策）不需要 Key。
+
+---
+
+## 部署边界：哪些能上 GitHub，哪些不能
+
+GitHub 是代码托管 + 静态文件托管，**不是能跑长驻进程的主机**。所以本项目分三层：
+
+| 能力 | 能否跑在 GitHub | 说明 |
+|------|------------------|------|
+| 静态展示站（报告 / 分析页 / 落地页） | ✅ GitHub Pages | 源目录 `docs/`，已启用：<https://dhysgf.github.io/stockpred-main/> |
+| 代码质量校验（编译 / 导入 / 路由冒烟） | ✅ GitHub Actions | `.github/workflows/ci.yml`，每次 push 自动跑 |
+| **实时分钟级跟踪**（`live.py`，每 3 秒拉行情、写 SQLite、Hedge 在线调权） | ❌ 不行 | 需要常驻进程 + 可写磁盘 + 持续外网访问行情源 |
+
+**为什么实时层上不了 Pages**：Pages 只返回静态文件，没有可执行环境；实时页的每一个数字
+（最新价、委比、9/14 路专家的即时预测、到期结算）都是后端每 3 秒现算的，
+静态化之后就只剩一张过期快照。
+
+**为什么上不了 Actions**：Actions 单次任务最长 6 小时、无持久磁盘、无固定入口，
+且按用量计费。它适合做构建和测试，不适合做一个 7×24 的行情服务。
+
+想在公网访问实时页，需要一台**常驻的机器**：
+
+```bash
+# 在任意有 Python 的机器 / VPS 上
+pip install -r requirements.txt
+python live.py --port 8020        # 打开 http://<该机IP>:8020/live?code=600519
+```
+
+若本机没有公网 IP，用内网穿透（frp / cloudflared / ngrok）把 8020 映射出去即可。
+注意：**暴露公网前务必先看清 `data/stockpred.db` 里存着你的大模型 Key**，
+它已在 `.gitignore` 中被排除，不会随仓库泄露，但服务本身对外可达时仍需加访问控制。
 
 ---
 
