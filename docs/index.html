@@ -40,14 +40,35 @@ thead th{background:#f6f8fa;color:#5b6470;font-weight:600}
 <div class="wrap">
 
 <h1>A股多模型决策系统</h1>
-<p class="lead">把 <b>多模型量化预测</b> + <b>K线形态</b> + <b>量能资金</b> + <b>大模型新闻/政策研判</b> + <b>拐点模型</b>
-加权成一个可解释的决策，并给出 <b>5 / 7 / 30 个交易日</b> 的目标价位区间与买卖点。</p>
+<p class="lead">两套独立系统：<b>分钟级实时预测</b>（14 路专家 + Hedge 在线加权，每 3 秒刷新，预测未来 1/3/5 分钟）
+与 <b>日线多模型决策</b>（多模型融合 + 8 路信号，给出 5 / 7 / 30 个交易日目标区间与买卖点）。</p>
 <div>
-  <span class="tag">RF + GBDT + LSTM 融合</span>
+  <span class="tag">14 路实时专家</span>
+  <span class="tag">Hedge 在线调权</span>
+  <span class="tag">东财涨幅榜 Top50</span>
+  <span class="tag">RF + GBDT 融合</span>
   <span class="tag">300 只股票池横截面训练</span>
-  <span class="tag">CQR / 波动率区间</span>
-  <span class="tag">任意 A 股 6 位代码</span>
   <span class="tag" id="envTag">本站为静态演示，数值为实跑快照</span>
+</div>
+
+<div class="card" style="border-color:#2ca02c;background:#f0fdf4">
+  <h2 style="color:#1e7f43">① 实时预测看板（分钟级 · 新）</h2>
+  <div class="muted" style="margin-bottom:10px">
+    14 路分钟级专家 + Hedge 在线加权，每 3 秒随行情刷新，预测未来 <b>1 / 3 / 5 分钟</b>，
+    到期用真实价结算、把误差回写给每路专家并自动调权。看板里能看到每一路的当前预测、
+    有效权重、贡献、历史命中率与 MAE，以及东财涨幅榜入口。
+  </div>
+  <a class="btn" href="live.html">打开实时看板快照 →</a>
+</div>
+
+<div class="card" style="border-color:#3b82f6;background:#f0f7ff">
+  <h2 style="color:#1d4ed8">② 日线多模型决策（5 / 7 / 30 个交易日）</h2>
+  <div class="muted" style="margin-bottom:10px">
+    下面这一整套是<b>日线层</b>：多模型融合出目标价区间、8 路信号加权成买卖结论、
+    K 线形态与量能资金、拐点概率、买卖点。与上面的实时看板是<b>两个独立层次</b>，
+    不要混淆（实时 14 路 ≠ 日线 8 路，详见仓库 README）。
+  </div>
+  <a class="btn alt" href="analysis.html">打开完整日线分析（含图）→</a>
 </div>
 
 <div class="card ask" id="askWrap">
