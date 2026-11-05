@@ -1,6 +1,5 @@
 # stockpred · A 股多信号量化预测系统
 
-[![CI](https://github.com/dhysgf/stockpred-main/actions/workflows/ci.yml/badge.svg)](https://github.com/dhysgf/stockpred-main/actions/workflows/ci.yml)
 [![Pages](https://img.shields.io/badge/demo-GitHub%20Pages-2ca02c)](https://dhysgf.github.io/stockpred-main/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -147,12 +146,11 @@ python web.py --port 8010         # 主入口：/live 与 /rank 已挂在同一�
 
 ## 部署边界：哪些能上 GitHub，哪些不能
 
-GitHub 是代码托管 + 静态文件托管，**不是能跑长驻进程的主机**。所以本项目分三层：
+GitHub 是代码托管 + 静态文件托管，**不是能跑长驻进程的主机**。所以本项目分两层：
 
 | 能力 | 能否跑在 GitHub | 说明 |
 |------|------------------|------|
 | 静态展示站（报告 / 分析页 / 落地页） | ✅ GitHub Pages | 源目录 `docs/`，已启用：<https://dhysgf.github.io/stockpred-main/> |
-| 代码质量校验（编译 / 导入 / 路由冒烟） | ✅ GitHub Actions | `.github/workflows/ci.yml`，每次 push 自动跑 |
 | **实时分钟级跟踪**（`live.py`，每 3 秒拉行情、写 SQLite、Hedge 在线调权） | ❌ 不行 | 需要常驻进程 + 可写磁盘 + 持续外网访问行情源 |
 
 **为什么实时层上不了 Pages**：Pages 只返回静态文件，没有可执行环境；实时页的每一个数字
