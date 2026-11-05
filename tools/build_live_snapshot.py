@@ -369,6 +369,11 @@ CSS = """
 body{margin:0;background:#f5f6f8;color:#1f2328;
   font:15px/1.7 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
 .wrap{max-width:1000px;margin:0 auto;padding:32px 18px 64px}
+.nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.nav a{text-decoration:none;font-size:13.5px;color:#5b6470;background:#fff;
+  border:1px solid #dfe3e8;border-radius:999px;padding:5px 14px}
+.nav a:hover{border-color:#93c5fd;color:#1d4ed8}
+.nav a.on{background:#2ca02c;color:#fff;border-color:#2ca02c}
 h1{font-size:25px;margin:0 0 6px}
 h2{font-size:17px;margin:0 0 4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .lead{color:#5b6470;font-size:14.5px;margin:0 0 10px}
@@ -431,6 +436,13 @@ TMPL = """<!DOCTYPE html>
 <body>
 <div class="wrap">
 
+<div class="nav">
+  <a href="index.html">首页</a>
+  <a href="live.html" class="on">实时看板</a>
+  <a href="rank.html">涨幅榜</a>
+  <a href="daily.html">日线分析</a>
+</div>
+
 <h1>实时预测看板 · 真实运行快照</h1>
 <p class="lead">14 路分钟级专家 + Hedge 在线加权，每 3 秒随行情刷新一次，
 预测未来 <b>1 / 3 / 5 分钟</b>，到期用真实价结算并回写误差、自动调权。</p>
@@ -482,7 +494,7 @@ TMPL = """<!DOCTYPE html>
 <div class="card">
   <h2>怎么让这个看板真的动起来</h2>
   <div class="tip">
-    实时服务必须跑在**自己的机器**上（本机 / VPS / 内网穿透），Pages 托管不了常驻进程。
+    实时服务必须跑在<b>自己的机器</b>上（本机 / VPS / 内网穿透），Pages 托管不了常驻进程。
   </div>
   <pre class="muted" style="background:#fafbfc;border:1px solid #eef1f4;border-radius:8px;padding:12px;overflow:auto">python live.py --port 8020          # 启动实时服务
 python live.py --rank               # 顺便起涨幅榜

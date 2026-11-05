@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>涨幅榜 · 东方财富（真实抓取快照）</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f6f8;color:#1f2328;
+  font:15px/1.7 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:1060px;margin:0 auto;padding:26px 18px 64px}
+.nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.nav a{text-decoration:none;font-size:13.5px;color:#5b6470;background:#fff;
+  border:1px solid #dfe3e8;border-radius:999px;padding:5px 14px}
+.nav a:hover{border-color:#93c5fd;color:#1d4ed8}
+.nav a.on{background:#2ca02c;color:#fff;border-color:#2ca02c}
+h1{font-size:24px;margin:0 0 6px}
+h2{font-size:16.5px;margin:0 0 8px}
+.lead{color:#5b6470;font-size:14px;margin:0 0 12px}
+.card{background:#fff;border:1px solid #dfe3e8;border-radius:12px;
+  padding:18px 20px;margin:14px 0}
+.muted{color:#6b7280;font-size:13px;line-height:1.65}
+.tiny{color:#8a94a2;font-size:12px}
+.warn{background:#fffbeb;border-left:4px solid #f59e0b;padding:12px 16px;
+  border-radius:6px;font-size:13.5px;margin:12px 0}
+.tip{background:#eff6ff;border-left:4px solid #3b82f6;padding:12px 16px;
+  border-radius:6px;font-size:13.5px;margin:12px 0}
+.badge{display:inline-block;font-size:11.5px;background:#eef2f7;color:#5b6470;
+  border-radius:999px;padding:2px 9px;vertical-align:middle;margin-left:6px}
+.tabs{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.tab{cursor:pointer;font-size:13.5px;padding:6px 16px;border-radius:999px;
+  background:#f3f4f6;color:#5b6470;border:1px solid transparent;user-select:none}
+.tab:hover{border-color:#c7d2fe}
+.tab.on{background:#eef2ff;color:#1d4ed8;border-color:#c7d2fe;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 8px;border-bottom:1px solid #edf0f3;text-align:right;
+  white-space:nowrap}
+th:nth-child(2),td:nth-child(2),th:nth-child(1),td:nth-child(1){text-align:left}
+thead th{background:#f6f8fa;color:#5b6470;font-weight:600;font-size:12.5px;
+  position:sticky;top:0;z-index:2}
+tbody tr:hover{background:#f8fafc}
+.up{color:#c0392b;font-weight:600}.down{color:#1e7f43;font-weight:600}
+.neu{color:#6b7280}
+.code{display:block;font-size:11px;color:#9aa4b2;font-family:ui-monospace,monospace}
+.fire{font-size:11px;color:#c0392b;background:#fdeaea;border-radius:4px;
+  padding:1px 5px;margin-left:5px;vertical-align:middle}
+.scroll{max-height:66vh;overflow:auto;border:1px solid #eef1f4;border-radius:8px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0}
+.st{background:#fafbfc;border:1px solid #eef1f4;border-radius:10px;padding:10px 12px}
+.st span{display:block;font-size:12px;color:#6b7280}
+.st b{font-size:18px;font-variant-numeric:tabular-nums}
+.foot{color:#6b7280;font-size:12.5px;margin-top:22px;line-height:1.75}
+pre{background:#fafbfc;border:1px solid #eef1f4;border-radius:8px;padding:12px;
+  overflow:auto;font-size:12.5px;color:#374151}
+@media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="nav">
+  <a href="index.html">首页</a>
+  <a href="live.html">实时看板</a>
+  <a href="rank.html" class="on">涨幅榜</a>
+  <a href="daily.html">日线分析</a>
+</div>
+<h1>涨幅榜 <span class="badge">数据源：东方财富 push2</span></h1>
+<p class="lead">爬虫按<b>涨跌幅降序</b>抓取沪深全市场与科创板，各留前 50 名。
+每行可点，跳转到实时看板查看该标的的 14 路专家预测。</p>
+
+<div class="warn">
+  <b>这是爬虫最近一次真实抓取的结果快照，不会自己刷新。</b><br>
+  动态版在 <code>python live.py --rank</code> 起的服务里（<code>/rank</code> 路由，每 30 秒重抓）。
+  Pages 托管不了常驻进程，所以线上这份是固化的。抓取时刻 2026-11-05 11:27，
+  行情时刻 11:27:00 —— <b>数字是真的，只是停在那一刻</b>。
+</div>
+
+<div class="card">
+  <div class="tabs">
+    <div class="tab on" id="tabA" onclick="pick('a')">A股（沪深全市场）</div>
+    <div class="tab" id="tabK" onclick="pick('kcb')">科创板</div>
+    <span class="muted" id="meta"></span>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="scroll"><table id="tbl"></table></div>
+  <div class="muted" style="margin-top:8px" id="note"></div>
+</div>
+
+<div class="card">
+  <h2>爬虫在做什么</h2>
+  <table style="font-size:13px">
+    <thead><tr><th style="text-align:left">项</th><th style="text-align:left">说明</th></tr></thead>
+    <tbody>
+      <tr><td style="text-align:left"><b>接口</b></td>
+        <td style="text-align:left"><code>push2.eastmoney.com/api/qt/clist/get</code>，
+        免 token、免登录，按 <code>f3</code>（涨跌幅）降序取前 50</td></tr>
+      <tr><td style="text-align:left"><b>范围</b></td>
+        <td style="text-align:left">A 股 = 沪深京全市场（剔除停牌）；科创板 = 独立板块 622 只</td></tr>
+      <tr><td style="text-align:left"><b>去重</b></td>
+        <td style="text-align:left">同一分钟内多次抓取只更新时间戳，内容相同不重复入库</td></tr>
+      <tr><td style="text-align:left"><b>收盘后</b></td>
+        <td style="text-align:left">东财行情会冻结（<code>f124</code> 停在 15:00），
+        页面分开展示「抓取时间」与「行情时间」，不会假装在刷新</td></tr>
+      <tr><td style="text-align:left"><b>下游</b></td>
+        <td style="text-align:left">点任意一行 → 实时看板；本机版可直接开跟踪、输入自己的大模型 Key</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>抓取历史 <span class="tiny" style="font-weight:400">库内共 30 份快照</span></h2>
+  <div class="muted">下面是最近 12 次记录，证明这是持续运行的爬虫，不是一次性截图。</div>
+  <table><thead><tr><th style='text-align:left'>抓取时刻</th><th style='text-align:left'>市场</th><th style='text-align:right'>条数</th></tr></thead><tbody><tr><td style='text-align:left'>2026-11-05 11:27</td><td style='text-align:left'>A 股</td><td style='text-align:right'>1</td></tr><tr><td style='text-align:left'>2026-11-05 11:27</td><td style='text-align:left'>科创板</td><td style='text-align:right'>1</td></tr><tr><td style='text-align:left'>2026-11-05 11:26</td><td style='text-align:left'>A 股</td><td style='text-align:right'>1</td></tr><tr><td style='text-align:left'>2026-11-05 10:10</td><td style='text-align:left'>A 股</td><td style='text-align:right'>1</td></tr><tr><td style='text-align:left'>2026-11-05 10:10</td><td style='text-align:left'>科创板</td><td style='text-align:right'>1</td></tr><tr><td style='text-align:left'>2026-11-05 10:06</td><td style='text-align:left'>A 股</td><td style='text-align:right'>1</td></tr><tr><td style='text-align:left'>2026-11-05 10:06</td><td style='text-align:left'>科创板</td><td style='text-align:right'>1</td></tr><tr><td style='text-align:left'>2026-11-05 09:56</td><td style='text-align:left'>A 股</td><td style='text-align:right'>1</td></tr><tr><td style='text-align:left'>2026-11-05 09:56</td><td style='text-align:left'>科创板</td><td style='text-align:right'>1</td></tr><tr><td style='text-align:left'>2026-11-05 09:55</td><td style='text-align:left'>A 股</td><td style='text-align:right'>1</td></tr><tr><td style='text-align:left'>2026-11-05 09:40</td><td style='text-align:left'>科创板</td><td style='text-align:right'>1</td></tr><tr><td style='text-align:left'>2026-11-05 09:39</td><td style='text-align:left'>A 股</td><td style='text-align:right'>1</td></tr></tbody></table>
+</div>
+
+<div class="card">
+  <h2>本地跑真·实时榜单</h2>
+  <pre>python live.py --rank            # 起服务并挂载 /rank
+python run.py --rank             # 或只抓一次落库</pre>
+  <div class="muted">然后访问 <code>http://127.0.0.1:8020/rank</code>：
+  每 30 秒重抓、A股/科创板切换、点击行直接开始跟踪。收盘后自动降频并提示冻结。</div>
+</div>
+
+<div class="foot">
+  本页由 <code>tools/build_rank_snapshot.py</code> 从 <code>data/stockpred.db</code>
+  的 <code>rank_snapshots</code> 表直接生成，未经手工修改。
+</div>
+</div>
+
+<script>
+const DATA = {"a":{"ts":"2026-11-05 11:27","total":5563,"rows":[{"rank":1,"code":"301209","name":"联合化学","price":39.95,"pct":20.01,"speed":0.0,"turnover":7.06,"liangbi":5.16,"amount_yi":3.345,"main_net_wan":-1575.328,"main_pct":-4.71,"mktcap_yi":62.642,"near_limit":true,"quote_ts":"11:27:00"},{"rank":2,"code":"300093","name":"金刚光伏","price":18.66,"pct":20.0,"speed":0.0,"turnover":5.46,"liangbi":4.47,"amount_yi":2.665,"main_net_wan":3214.485,"main_pct":12.06,"mktcap_yi":103.185,"near_limit":true,"quote_ts":"11:27:03"},{"rank":3,"code":"300049","name":"福瑞医科","price":49.32,"pct":20.0,"speed":0.0,"turnover":8.28,"liangbi":4.0,"amount_yi":9.076,"main_net_wan":9866.373,"main_pct":10.87,"mktcap_yi":130.2,"near_limit":true,"quote_ts":"11:27:03"},{"rank":4,"code":"301697","name":"贝特利","price":30.5,"pct":19.98,"speed":0.0,"turnover":22.93,"liangbi":2.74,"amount_yi":3.076,"main_net_wan":11943.6,"main_pct":38.82,"mktcap_yi":80.124,"near_limit":true,"quote_ts":"11:27:00"},{"rank":5,"code":"688429","name":"时创能源","price":10.69,"pct":19.98,"speed":0.0,"turnover":0.75,"liangbi":3.22,"amount_yi":0.31,"main_net_wan":817.327,"main_pct":26.38,"mktcap_yi":42.76,"near_limit":true,"quote_ts":"11:27:01"},{"rank":6,"code":"300493","name":"润欣科技","price":13.94,"pct":19.97,"speed":0.0,"turnover":9.15,"liangbi":4.4,"amount_yi":6.329,"main_net_wan":24398.42,"main_pct":38.55,"mktcap_yi":71.445,"near_limit":true,"quote_ts":"11:27:03"},{"rank":7,"code":"300071","name":"福石控股","price":4.51,"pct":19.0,"speed":0.0,"turnover":27.2,"liangbi":11.81,"amount_yi":11.391,"main_net_wan":37799.468,"main_pct":33.18,"mktcap_yi":43.471,"near_limit":true,"quote_ts":"11:27:03"},{"rank":8,"code":"300709","name":"精研科技","price":40.84,"pct":18.45,"speed":-0.78,"turnover":15.08,"liangbi":4.47,"amount_yi":8.852,"main_net_wan":6099.952,"main_pct":6.89,"mktcap_yi":76.244,"near_limit":true,"quote_ts":"11:27:03"},{"rank":9,"code":"688516","name":"奥特维","price":49.96,"pct":16.32,"speed":0.18,"turnover":7.51,"liangbi":4.91,"amount_yi":11.508,"main_net_wan":14856.953,"main_pct":12.91,"mktcap_yi":157.254,"near_limit":true,"quote_ts":"11:27:05"},{"rank":10,"code":"688227","name":"品高股份","price":67.99,"pct":15.87,"speed":-1.11,"turnover":5.55,"liangbi":4.25,"amount_yi":4.246,"main_net_wan":5107.712,"main_pct":12.03,"mktcap_yi":76.866,"near_limit":true,"quote_ts":"11:27:05"},{"rank":11,"code":"300751","name":"迈为股份","price":164.02,"pct":15.47,"speed":-0.59,"turnover":6.35,"liangbi":2.71,"amount_yi":19.665,"main_net_wan":35364.434,"main_pct":17.98,"mktcap_yi":457.455,"near_limit":true,"quote_ts":"11:27:03"},{"rank":12,"code":"301061","name":"匠心家居","price":44.8,"pct":14.17,"speed":0.0,"turnover":2.94,"liangbi":4.23,"amount_yi":2.5,"main_net_wan":-2179.114,"main_pct":-8.72,"mktcap_yi":128.037,"near_limit":true,"quote_ts":"11:27:03"},{"rank":13,"code":"300201","name":"海伦哲","price":11.3,"pct":13.91,"speed":0.36,"turnover":5.03,"liangbi":2.96,"amount_yi":5.499,"main_net_wan":-1189.292,"main_pct":-2.16,"mktcap_yi":114.022,"near_limit":true,"quote_ts":"11:27:03"},{"rank":14,"code":"300688","name":"创业黑马","price":30.42,"pct":13.38,"speed":-0.33,"turnover":7.68,"liangbi":2.32,"amount_yi":3.284,"main_net_wan":1186.078,"main_pct":3.61,"mktcap_yi":50.917,"near_limit":true,"quote_ts":"11:27:03"},{"rank":15,"code":"688622","name":"*ST禾信","price":119.37,"pct":13.32,"speed":2.03,"turnover":0.69,"liangbi":3.08,"amount_yi":0.548,"main_net_wan":311.291,"main_pct":5.69,"mktcap_yi":84.115,"near_limit":true,"quote_ts":"11:27:04"},{"rank":16,"code":"300438","name":"鹏辉能源","price":45.24,"pct":13.27,"speed":-0.77,"turnover":14.06,"liangbi":4.06,"amount_yi":25.658,"main_net_wan":24036.114,"main_pct":9.37,"mktcap_yi":228.714,"near_limit":true,"quote_ts":"11:27:03"},{"rank":17,"code":"301171","name":"易点天下","price":34.77,"pct":13.26,"speed":-0.66,"turnover":16.16,"liangbi":3.88,"amount_yi":27.759,"main_net_wan":33307.933,"main_pct":12.0,"mktcap_yi":215.06,"near_limit":true,"quote_ts":"11:27:03"},{"rank":18,"code":"688726","name":"拉普拉斯","price":41.66,"pct":12.78,"speed":-0.6,"turnover":7.66,"liangbi":4.71,"amount_yi":7.029,"main_net_wan":-3499.723,"main_pct":-4.98,"mktcap_yi":168.859,"near_limit":true,"quote_ts":"11:27:05"},{"rank":19,"code":"688209","name":"英集芯","price":26.59,"pct":12.67,"speed":0.45,"turnover":4.15,"liangbi":2.97,"amount_yi":4.589,"main_net_wan":5076.508,"main_pct":11.06,"mktcap_yi":115.343,"near_limit":true,"quote_ts":"11:26:59"},{"rank":20,"code":"688503","name":"聚和材料","price":51.67,"pct":12.6,"speed":-0.27,"turnover":6.28,"liangbi":3.12,"amount_yi":7.63,"main_net_wan":9668.481,"main_pct":12.67,"mktcap_yi":125.059,"near_limit":true,"quote_ts":"11:27:04"},{"rank":21,"code":"300647","name":"超频三","price":7.72,"pct":12.54,"speed":-0.52,"turnover":6.64,"liangbi":2.13,"amount_yi":2.242,"main_net_wan":1677.276,"main_pct":7.48,"mktcap_yi":35.305,"near_limit":true,"quote_ts":"11:27:03"},{"rank":22,"code":"300842","name":"帝科股份","price":50.0,"pct":12.44,"speed":-0.5,"turnover":6.13,"liangbi":2.7,"amount_yi":3.874,"main_net_wan":-421.011,"main_pct":-1.09,"mktcap_yi":73.06,"near_limit":true,"quote_ts":"11:27:03"},{"rank":23,"code":"688353","name":"华盛锂电","price":75.83,"pct":12.01,"speed":-0.5,"turnover":3.76,"liangbi":3.29,"amount_yi":4.473,"main_net_wan":853.827,"main_pct":1.91,"mktcap_yi":120.949,"near_limit":true,"quote_ts":"11:27:00"},{"rank":24,"code":"688371","name":"菲沃泰","price":17.59,"pct":11.82,"speed":-0.51,"turnover":2.69,"liangbi":2.94,"amount_yi":1.545,"main_net_wan":1762.587,"main_pct":11.41,"mktcap_yi":59.01,"near_limit":true,"quote_ts":"11:27:03"},{"rank":25,"code":"688648","name":"中邮科技","price":32.41,"pct":11.72,"speed":0.25,"turnover":7.29,"liangbi":1.76,"amount_yi":1.559,"main_net_wan":1311.211,"main_pct":8.41,"mktcap_yi":44.078,"near_limit":true,"quote_ts":"11:27:05"},{"rank":26,"code":"688680","name":"海优新材","price":36.51,"pct":11.65,"speed":-0.35,"turnover":3.69,"liangbi":3.88,"amount_yi":1.294,"main_net_wan":107.387,"main_pct":0.83,"mktcap_yi":35.623,"near_limit":true,"quote_ts":"11:26:58"},{"rank":27,"code":"688499","name":"利元亨","price":48.01,"pct":11.16,"speed":-0.04,"turnover":8.93,"liangbi":2.42,"amount_yi":7.156,"main_net_wan":2213.416,"main_pct":3.09,"mktcap_yi":81.007,"near_limit":true,"quote_ts":"11:27:04"},{"rank":28,"code":"688472","name":"阿特斯","price":9.86,"pct":11.04,"speed":0.1,"turnover":3.14,"liangbi":5.3,"amount_yi":11.102,"main_net_wan":6405.401,"main_pct":5.77,"mktcap_yi":359.214,"near_limit":true,"quote_ts":"11:27:04"},{"rank":29,"code":"300442","name":"润泽科技","price":59.45,"pct":10.98,"speed":-0.27,"turnover":1.79,"liangbi":3.08,"amount_yi":17.226,"main_net_wan":19592.782,"main_pct":11.37,"mktcap_yi":975.599,"near_limit":true,"quote_ts":"11:27:03"},{"rank":30,"code":"688411","name":"海博思创","price":183.75,"pct":10.69,"speed":0.03,"turnover":6.34,"liangbi":2.78,"amount_yi":15.264,"main_net_wan":9666.008,"main_pct":6.33,"mktcap_yi":335.261,"near_limit":true,"quote_ts":"11:27:04"},{"rank":31,"code":"688390","name":"固德威","price":56.07,"pct":10.59,"speed":-0.59,"turnover":9.24,"liangbi":3.93,"amount_yi":12.525,"main_net_wan":7615.81,"main_pct":6.08,"mktcap_yi":136.319,"near_limit":true,"quote_ts":"11:27:03"},{"rank":32,"code":"688717","name":"艾罗能源","price":41.61,"pct":10.49,"speed":-0.53,"turnover":14.24,"liangbi":4.26,"amount_yi":5.883,"main_net_wan":3820.111,"main_pct":6.5,"mktcap_yi":66.576,"near_limit":true,"quote_ts":"11:27:04"},{"rank":33,"code":"688036","name":"传音控股","price":64.86,"pct":10.38,"speed":-0.14,"turnover":1.64,"liangbi":2.26,"amount_yi":12.081,"main_net_wan":-2748.178,"main_pct":-2.27,"mktcap_yi":802.858,"near_limit":true,"quote_ts":"11:27:05"},{"rank":34,"code":"300037","name":"新宙邦","price":58.73,"pct":10.29,"speed":-0.37,"turnover":3.34,"liangbi":2.7,"amount_yi":10.356,"main_net_wan":-85.414,"main_pct":-0.08,"mktcap_yi":442.758,"near_limit":true,"quote_ts":"11:27:03"},{"rank":35,"code":"002309","name":"中利集团","price":2.92,"pct":10.19,"speed":0.0,"turnover":5.8,"liangbi":4.21,"amount_yi":3.988,"main_net_wan":10360.849,"main_pct":25.98,"mktcap_yi":87.824,"near_limit":true,"quote_ts":"11:27:03"},{"rank":36,"code":"301178","name":"天亿马","price":33.77,"pct":10.14,"speed":-0.38,"turnover":5.44,"liangbi":2.4,"amount_yi":1.236,"main_net_wan":1175.149,"main_pct":9.51,"mktcap_yi":31.441,"near_limit":true,"quote_ts":"11:27:00"},{"rank":37,"code":"600261","name":"阳光照明","price":4.91,"pct":10.09,"speed":0.82,"turnover":22.72,"liangbi":5.02,"amount_yi":13.434,"main_net_wan":9354.311,"main_pct":6.96,"mktcap_yi":65.551,"near_limit":true,"quote_ts":"11:27:04"},{"rank":38,"code":"600986","name":"浙文互联","price":7.65,"pct":10.07,"speed":0.0,"turnover":7.71,"liangbi":4.54,"amount_yi":8.589,"main_net_wan":24269.52,"main_pct":28.26,"mktcap_yi":113.784,"near_limit":true,"quote_ts":"11:27:04"},{"rank":39,"code":"600683","name":"京投发展","price":7.87,"pct":10.07,"speed":0.0,"turnover":1.56,"liangbi":1.82,"amount_yi":0.889,"main_net_wan":3036.446,"main_pct":34.16,"mktcap_yi":58.299,"near_limit":true,"quote_ts":"11:27:04"},{"rank":40,"code":"002086","name":"东方海洋","price":3.61,"pct":10.06,"speed":0.28,"turnover":48.1,"liangbi":3.9,"amount_yi":26.392,"main_net_wan":27802.866,"main_pct":10.53,"mktcap_yi":70.718,"near_limit":true,"quote_ts":"11:27:03"},{"rank":41,"code":"600537","name":"*ST亿晶","price":1.86,"pct":10.06,"speed":0.0,"turnover":8.87,"liangbi":9.03,"amount_yi":1.884,"main_net_wan":-1537.355,"main_pct":-8.16,"mktcap_yi":22.017,"near_limit":true,"quote_ts":"11:27:05"},{"rank":42,"code":"600396","name":"华电辽能","price":10.18,"pct":10.05,"speed":0.0,"turnover":3.64,"liangbi":2.04,"amount_yi":5.28,"main_net_wan":13458.155,"main_pct":25.49,"mktcap_yi":149.922,"near_limit":true,"quote_ts":"11:27:04"},{"rank":43,"code":"000510","name":"新金路","price":10.62,"pct":10.05,"speed":0.0,"turnover":10.01,"liangbi":2.53,"amount_yi":6.237,"main_net_wan":9970.287,"main_pct":15.98,"mktcap_yi":68.875,"near_limit":true,"quote_ts":"11:27:03"},{"rank":44,"code":"002088","name":"鲁阳节能","price":10.08,"pct":10.04,"speed":0.0,"turnover":8.42,"liangbi":4.82,"amount_yi":4.08,"main_net_wan":1710.599,"main_pct":4.19,"mktcap_yi":51.352,"near_limit":true,"quote_ts":"11:27:03"},{"rank":45,"code":"605339","name":"南侨食品","price":14.36,"pct":10.04,"speed":0.0,"turnover":0.95,"liangbi":2.09,"amount_yi":0.574,"main_net_wan":1920.039,"main_pct":33.47,"mktcap_yi":60.928,"near_limit":true,"quote_ts":"11:26:50"},{"rank":46,"code":"002421","name":"达实智能","price":3.18,"pct":10.03,"speed":0.0,"turnover":15.96,"liangbi":2.36,"amount_yi":10.103,"main_net_wan":29755.484,"main_pct":29.45,"mktcap_yi":67.434,"near_limit":true,"quote_ts":"11:27:03"},{"rank":47,"code":"000017","name":"深中华A","price":7.02,"pct":10.03,"speed":0.0,"turnover":2.37,"liangbi":0.9,"amount_yi":0.735,"main_net_wan":925.376,"main_pct":12.6,"mktcap_yi":48.381,"near_limit":true,"quote_ts":"11:27:03"},{"rank":48,"code":"001360","name":"南矿集团","price":18.98,"pct":10.03,"speed":0.0,"turnover":2.78,"liangbi":0.77,"amount_yi":0.659,"main_net_wan":2385.737,"main_pct":36.23,"mktcap_yi":38.719,"near_limit":true,"quote_ts":"11:26:48"},{"rank":49,"code":"002131","name":"利欧股份","price":4.39,"pct":10.03,"speed":0.0,"turnover":8.01,"liangbi":3.82,"amount_yi":20.279,"main_net_wan":82773.682,"main_pct":40.82,"mktcap_yi":297.281,"near_limit":true,"quote_ts":"11:27:03"},{"rank":50,"code":"002135","name":"东南网架","price":4.83,"pct":10.02,"speed":0.0,"turnover":1.26,"liangbi":1.26,"amount_yi":0.603,"main_net_wan":2397.262,"main_pct":39.76,"mktcap_yi":53.88,"near_limit":true,"quote_ts":"11:27:00"}]},"kcb":{"ts":"2026-11-05 11:27","total":622,"rows":[{"rank":1,"code":"688429","name":"时创能源","price":10.69,"pct":19.98,"speed":0.0,"turnover":0.75,"liangbi":3.22,"amount_yi":0.31,"main_net_wan":817.327,"main_pct":26.38,"mktcap_yi":42.76,"near_limit":true,"quote_ts":"11:27:07"},{"rank":2,"code":"688516","name":"奥特维","price":49.96,"pct":16.32,"speed":0.18,"turnover":7.51,"liangbi":4.91,"amount_yi":11.508,"main_net_wan":14856.953,"main_pct":12.91,"mktcap_yi":157.254,"near_limit":false,"quote_ts":"11:27:05"},{"rank":3,"code":"688227","name":"品高股份","price":67.99,"pct":15.87,"speed":-1.11,"turnover":5.55,"liangbi":4.25,"amount_yi":4.246,"main_net_wan":5107.712,"main_pct":12.03,"mktcap_yi":76.866,"near_limit":false,"quote_ts":"11:27:05"},{"rank":4,"code":"688622","name":"*ST禾信","price":119.37,"pct":13.32,"speed":2.03,"turnover":0.69,"liangbi":3.08,"amount_yi":0.548,"main_net_wan":311.291,"main_pct":5.69,"mktcap_yi":84.115,"near_limit":false,"quote_ts":"11:27:04"},{"rank":5,"code":"688726","name":"拉普拉斯","price":41.66,"pct":12.78,"speed":-0.6,"turnover":7.66,"liangbi":4.71,"amount_yi":7.029,"main_net_wan":-3499.723,"main_pct":-4.98,"mktcap_yi":168.859,"near_limit":false,"quote_ts":"11:27:05"},{"rank":6,"code":"688209","name":"英集芯","price":26.59,"pct":12.67,"speed":0.45,"turnover":4.15,"liangbi":2.97,"amount_yi":4.589,"main_net_wan":5076.508,"main_pct":11.06,"mktcap_yi":115.343,"near_limit":false,"quote_ts":"11:26:59"},{"rank":7,"code":"688503","name":"聚和材料","price":51.67,"pct":12.6,"speed":-0.27,"turnover":6.28,"liangbi":3.12,"amount_yi":7.63,"main_net_wan":9668.481,"main_pct":12.67,"mktcap_yi":125.059,"near_limit":false,"quote_ts":"11:27:04"},{"rank":8,"code":"688353","name":"华盛锂电","price":75.83,"pct":12.01,"speed":-0.5,"turnover":3.76,"liangbi":3.29,"amount_yi":4.473,"main_net_wan":853.827,"main_pct":1.91,"mktcap_yi":120.949,"near_limit":false,"quote_ts":"11:27:00"},{"rank":9,"code":"688371","name":"菲沃泰","price":17.59,"pct":11.82,"speed":-0.51,"turnover":2.69,"liangbi":2.94,"amount_yi":1.545,"main_net_wan":1762.587,"main_pct":11.41,"mktcap_yi":59.01,"near_limit":false,"quote_ts":"11:27:06"},{"rank":10,"code":"688648","name":"中邮科技","price":32.41,"pct":11.72,"speed":0.25,"turnover":7.29,"liangbi":1.76,"amount_yi":1.559,"main_net_wan":1311.211,"main_pct":8.41,"mktcap_yi":44.078,"near_limit":false,"quote_ts":"11:27:05"},{"rank":11,"code":"688680","name":"海优新材","price":36.51,"pct":11.65,"speed":-0.35,"turnover":3.69,"liangbi":3.88,"amount_yi":1.294,"main_net_wan":107.387,"main_pct":0.83,"mktcap_yi":35.623,"near_limit":false,"quote_ts":"11:26:58"},{"rank":12,"code":"688499","name":"利元亨","price":48.0,"pct":11.14,"speed":-0.06,"turnover":8.93,"liangbi":2.42,"amount_yi":7.157,"main_net_wan":2213.416,"main_pct":3.09,"mktcap_yi":80.99,"near_limit":false,"quote_ts":"11:27:07"},{"rank":13,"code":"688472","name":"阿特斯","price":9.86,"pct":11.04,"speed":0.1,"turnover":3.14,"liangbi":5.3,"amount_yi":11.102,"main_net_wan":6405.401,"main_pct":5.77,"mktcap_yi":359.214,"near_limit":false,"quote_ts":"11:27:04"},{"rank":14,"code":"688411","name":"海博思创","price":183.76,"pct":10.7,"speed":-0.12,"turnover":6.34,"liangbi":2.76,"amount_yi":15.264,"main_net_wan":9666.008,"main_pct":6.33,"mktcap_yi":335.279,"near_limit":false,"quote_ts":"11:27:07"},{"rank":15,"code":"688390","name":"固德威","price":56.07,"pct":10.59,"speed":-0.59,"turnover":9.24,"liangbi":3.93,"amount_yi":12.526,"main_net_wan":7615.81,"main_pct":6.08,"mktcap_yi":136.319,"near_limit":false,"quote_ts":"11:27:06"},{"rank":16,"code":"688717","name":"艾罗能源","price":41.61,"pct":10.49,"speed":-0.53,"turnover":14.24,"liangbi":4.26,"amount_yi":5.883,"main_net_wan":3820.111,"main_pct":6.5,"mktcap_yi":66.576,"near_limit":false,"quote_ts":"11:27:04"},{"rank":17,"code":"688036","name":"传音控股","price":64.86,"pct":10.38,"speed":-0.14,"turnover":1.64,"liangbi":2.26,"amount_yi":12.081,"main_net_wan":-2748.178,"main_pct":-2.27,"mktcap_yi":802.858,"near_limit":false,"quote_ts":"11:27:05"},{"rank":18,"code":"688158","name":"优刻得-W","price":29.13,"pct":10.17,"speed":-0.95,"turnover":5.14,"liangbi":3.0,"amount_yi":5.947,"main_net_wan":3335.878,"main_pct":5.61,"mktcap_yi":134.608,"near_limit":false,"quote_ts":"11:27:06"},{"rank":19,"code":"688185","name":"康希诺","price":78.17,"pct":9.79,"speed":-0.09,"turnover":7.99,"liangbi":2.27,"amount_yi":7.09,"main_net_wan":2885.317,"main_pct":4.07,"mktcap_yi":193.114,"near_limit":false,"quote_ts":"11:27:05"},{"rank":20,"code":"688669","name":"聚石化学","price":46.64,"pct":9.77,"speed":0.3,"turnover":3.5,"liangbi":2.02,"amount_yi":1.878,"main_net_wan":-142.129,"main_pct":-0.76,"mktcap_yi":56.59,"near_limit":false,"quote_ts":"11:27:05"},{"rank":21,"code":"688199","name":"久日新材","price":25.52,"pct":9.76,"speed":-0.16,"turnover":4.98,"liangbi":2.19,"amount_yi":1.999,"main_net_wan":-139.19,"main_pct":-0.7,"mktcap_yi":41.145,"near_limit":false,"quote_ts":"11:27:07"},{"rank":22,"code":"688109","name":"品茗科技","price":62.42,"pct":9.47,"speed":-0.24,"turnover":1.76,"liangbi":2.09,"amount_yi":0.844,"main_net_wan":-67.185,"main_pct":-0.8,"mktcap_yi":49.213,"near_limit":false,"quote_ts":"11:27:04"},{"rank":23,"code":"688225","name":"亚信安全","price":15.32,"pct":9.27,"speed":-0.2,"turnover":2.42,"liangbi":2.29,"amount_yi":1.467,"main_net_wan":866.002,"main_pct":5.9,"mktcap_yi":61.282,"near_limit":false,"quote_ts":"11:27:07"},{"rank":24,"code":"688361","name":"中科飞测","price":269.5,"pct":9.22,"speed":-0.44,"turnover":5.61,"liangbi":3.72,"amount_yi":53.136,"main_net_wan":49953.282,"main_pct":9.4,"mktcap_yi":948.779,"near_limit":false,"quote_ts":"11:27:07"},{"rank":25,"code":"688556","name":"高测股份","price":7.86,"pct":8.71,"speed":0.13,"turnover":6.34,"liangbi":2.84,"amount_yi":4.115,"main_net_wan":3614.986,"main_pct":8.79,"mktcap_yi":65.299,"near_limit":false,"quote_ts":"11:27:05"},{"rank":26,"code":"688507","name":"索辰科技","price":186.0,"pct":8.67,"speed":-0.56,"turnover":10.85,"liangbi":2.31,"amount_yi":17.659,"main_net_wan":9235.366,"main_pct":5.23,"mktcap_yi":165.742,"near_limit":false,"quote_ts":"11:27:05"},{"rank":27,"code":"688652","name":"京仪装备","price":102.26,"pct":8.64,"speed":-0.31,"turnover":9.65,"liangbi":4.31,"amount_yi":12.268,"main_net_wan":7685.502,"main_pct":6.26,"mktcap_yi":171.797,"near_limit":false,"quote_ts":"11:27:07"},{"rank":28,"code":"688408","name":"中信博","price":26.3,"pct":8.59,"speed":-0.68,"turnover":4.38,"liangbi":3.63,"amount_yi":2.53,"main_net_wan":1862.796,"main_pct":7.36,"mktcap_yi":57.614,"near_limit":false,"quote_ts":"11:27:05"},{"rank":29,"code":"688172","name":"燕东微","price":33.14,"pct":8.48,"speed":0.42,"turnover":1.38,"liangbi":2.9,"amount_yi":5.418,"main_net_wan":1990.736,"main_pct":3.67,"mktcap_yi":473.113,"near_limit":false,"quote_ts":"11:27:06"},{"rank":30,"code":"688316","name":"青云科技-U","price":43.39,"pct":8.26,"speed":0.51,"turnover":5.2,"liangbi":2.67,"amount_yi":1.045,"main_net_wan":86.503,"main_pct":0.83,"mktcap_yi":20.793,"near_limit":false,"quote_ts":"11:27:06"},{"rank":31,"code":"688315","name":"诺禾致源","price":18.66,"pct":8.17,"speed":-0.37,"turnover":5.3,"liangbi":1.72,"amount_yi":4.048,"main_net_wan":-2339.149,"main_pct":-5.78,"mktcap_yi":77.663,"near_limit":false,"quote_ts":"11:27:06"},{"rank":32,"code":"688521","name":"芯原股份","price":110.31,"pct":8.16,"speed":-0.3,"turnover":4.42,"liangbi":2.18,"amount_yi":25.32,"main_net_wan":26000.429,"main_pct":10.27,"mktcap_yi":580.137,"near_limit":false,"quote_ts":"11:27:04"},{"rank":33,"code":"688676","name":"金盘科技","price":57.5,"pct":8.14,"speed":-0.36,"turnover":4.14,"liangbi":3.23,"amount_yi":10.806,"main_net_wan":2590.974,"main_pct":2.4,"mktcap_yi":264.378,"near_limit":false,"quote_ts":"11:27:06"},{"rank":34,"code":"688809","name":"强一股份","price":241.77,"pct":7.98,"speed":0.15,"turnover":10.34,"liangbi":3.35,"amount_yi":8.951,"main_net_wan":5744.865,"main_pct":6.42,"mktcap_yi":438.53,"near_limit":false,"quote_ts":"11:27:06"},{"rank":35,"code":"688105","name":"诺唯赞","price":23.93,"pct":7.94,"speed":0.29,"turnover":2.56,"liangbi":1.89,"amount_yi":3.143,"main_net_wan":-1365.253,"main_pct":-4.34,"mktcap_yi":123.715,"near_limit":false,"quote_ts":"11:27:06"},{"rank":36,"code":"688560","name":"明冠新材","price":11.76,"pct":7.89,"speed":-0.25,"turnover":3.34,"liangbi":3.13,"amount_yi":0.736,"main_net_wan":-30.869,"main_pct":-0.42,"mktcap_yi":22.188,"near_limit":false,"quote_ts":"11:27:07"},{"rank":37,"code":"688212","name":"澳华内镜","price":28.63,"pct":7.87,"speed":0.03,"turnover":2.59,"liangbi":3.06,"amount_yi":0.979,"main_net_wan":-380.695,"main_pct":-3.89,"mktcap_yi":38.555,"near_limit":false,"quote_ts":"11:27:05"},{"rank":38,"code":"688049","name":"炬芯科技","price":47.55,"pct":7.85,"speed":-0.19,"turnover":7.52,"liangbi":3.02,"amount_yi":6.294,"main_net_wan":-522.487,"main_pct":-0.83,"mktcap_yi":83.696,"near_limit":false,"quote_ts":"11:27:04"},{"rank":39,"code":"688063","name":"派能科技","price":39.08,"pct":7.63,"speed":-0.33,"turnover":4.47,"liangbi":3.93,"amount_yi":4.272,"main_net_wan":-52.44,"main_pct":-0.12,"mktcap_yi":95.886,"near_limit":false,"quote_ts":"11:27:06"},{"rank":40,"code":"688244","name":"永信至诚","price":16.03,"pct":7.58,"speed":-0.31,"turnover":4.19,"liangbi":1.77,"amount_yi":0.986,"main_net_wan":353.718,"main_pct":3.6,"mktcap_yi":24.199,"near_limit":false,"quote_ts":"11:27:06"},{"rank":41,"code":"688258","name":"卓易信息","price":82.67,"pct":7.45,"speed":-0.58,"turnover":3.99,"liangbi":1.69,"amount_yi":3.968,"main_net_wan":5866.021,"main_pct":14.79,"mktcap_yi":100.148,"near_limit":false,"quote_ts":"11:27:05"},{"rank":42,"code":"688018","name":"乐鑫科技","price":166.73,"pct":7.39,"speed":0.04,"turnover":5.89,"liangbi":2.62,"amount_yi":22.768,"main_net_wan":19120.062,"main_pct":8.4,"mktcap_yi":390.789,"near_limit":false,"quote_ts":"11:27:05"},{"rank":43,"code":"688678","name":"福立旺","price":19.67,"pct":7.37,"speed":-0.2,"turnover":5.34,"liangbi":1.6,"amount_yi":4.091,"main_net_wan":3516.655,"main_pct":8.6,"mktcap_yi":90.036,"near_limit":false,"quote_ts":"11:27:06"},{"rank":44,"code":"688772","name":"珠海冠宇","price":16.59,"pct":7.17,"speed":-0.42,"turnover":2.71,"liangbi":2.23,"amount_yi":5.092,"main_net_wan":-4250.249,"main_pct":-8.35,"mktcap_yi":188.841,"near_limit":false,"quote_ts":"11:27:05"},{"rank":45,"code":"688200","name":"华峰测控","price":234.13,"pct":7.14,"speed":-0.12,"turnover":6.23,"liangbi":3.48,"amount_yi":29.605,"main_net_wan":45548.326,"main_pct":15.39,"mktcap_yi":470.876,"near_limit":false,"quote_ts":"11:27:05"},{"rank":46,"code":"688275","name":"万润新能","price":53.55,"pct":7.1,"speed":-0.3,"turnover":3.88,"liangbi":2.02,"amount_yi":2.559,"main_net_wan":-1463.757,"main_pct":-5.72,"mktcap_yi":67.536,"near_limit":false,"quote_ts":"11:27:07"},{"rank":47,"code":"688455","name":"科捷智能","price":14.75,"pct":7.04,"speed":-0.14,"turnover":1.23,"liangbi":1.62,"amount_yi":0.298,"main_net_wan":187.301,"main_pct":6.28,"mktcap_yi":24.785,"near_limit":false,"quote_ts":"11:27:00"},{"rank":48,"code":"688302","name":"海创药业-U","price":35.38,"pct":6.95,"speed":-0.51,"turnover":5.73,"liangbi":2.95,"amount_yi":2.06,"main_net_wan":2047.207,"main_pct":9.94,"mktcap_yi":35.032,"near_limit":false,"quote_ts":"11:27:07"},{"rank":49,"code":"688343","name":"云天励飞-U","price":49.51,"pct":6.93,"speed":-0.5,"turnover":2.54,"liangbi":1.81,"amount_yi":4.447,"main_net_wan":313.361,"main_pct":0.7,"mktcap_yi":178.04,"near_limit":false,"quote_ts":"11:27:06"},{"rank":50,"code":"688006","name":"杭可科技","price":18.8,"pct":6.64,"speed":-0.16,"turnover":1.76,"liangbi":2.27,"amount_yi":1.998,"main_net_wan":226.15,"main_pct":1.13,"mktcap_yi":113.49,"near_limit":false,"quote_ts":"11:27:05"}]}};
+let market = 'a';
+
+function fmt(v, d){ return (v==null||isNaN(v)) ? '—' : Number(v).toFixed(d==null?2:d); }
+function signed(v, d){
+  if (v==null||isNaN(v)) return '<span class="neu">—</span>';
+  const c = v>0?'up':(v<0?'down':'neu');
+  const s = (v>0?'+':'') + Number(v).toFixed(d==null?2:d);
+  return '<span class="'+c+'">'+s+'</span>';
+}
+
+function pick(m){
+  market = m;
+  document.getElementById('tabA').classList.toggle('on', m==='a');
+  document.getElementById('tabK').classList.toggle('on', m==='kcb');
+  render();
+}
+
+function render(){
+  const d = DATA[market];
+  const tbl = document.getElementById('tbl');
+  if(!d){ tbl.innerHTML = '<tbody><tr><td class="muted">无数据</td></tr></tbody>'; return; }
+  const rows = d.rows || [];
+
+  const upN = rows.filter(r=>r.pct>0).length;
+  const limitN = rows.filter(r=>r.near_limit).length;
+  const avgPct = rows.length ? rows.reduce((a,r)=>a+(r.pct||0),0)/rows.length : 0;
+  const mainSum = rows.reduce((a,r)=>a+(r.main_net_wan||0),0);
+  document.getElementById('stats').innerHTML =
+    '<div class="st"><span>全市场标的</span><b>'+d.total+'</b></div>' +
+    '<div class="st"><span>榜内上涨</span><b>'+upN+'/50</b></div>' +
+    '<div class="st"><span>榜内涨停/近涨停</span><b style="color:#c0392b">'+limitN+'</b></div>' +
+    '<div class="st"><span>榜内主力净额合计</span><b style="color:'+(mainSum>0?'#c0392b':'#1e7f43')+'">'+
+      (mainSum>0?'+':'') + (mainSum/10000).toFixed(2) + ' 亿</b></div>';
+
+  document.getElementById('meta').innerHTML =
+    '抓取 <b>'+d.ts+'</b> · 行情 <b>'+(rows[0]&&rows[0].quote_ts||'—')+'</b>';
+
+  let h = '<thead><tr><th>#</th><th>名称</th><th>价</th><th>涨幅</th>' +
+          '<th>涨速</th><th>换手</th><th>量比</th><th>成交额(亿)</th>' +
+          '<th>主力净额(万)</th><th>主力占比</th><th>总市值(亿)</th></tr></thead><tbody>';
+  rows.forEach(function(r){
+    h += '<tr data-code="'+r.code+'" style="cursor:pointer">' +
+      '<td>'+r.rank+'</td>' +
+      '<td><b>'+r.name+'</b>'+(r.near_limit?'<span class="fire">近涨停</span>':'')+
+        '<span class="code">'+r.code+'</span></td>' +
+      '<td>'+fmt(r.price)+'</td>' +
+      '<td>'+signed(r.pct)+'%</td>' +
+      '<td>'+signed(r.speed,2)+'</td>' +
+      '<td>'+fmt(r.turnover,1)+'%</td>' +
+      '<td>'+fmt(r.liangbi,2)+'</td>' +
+      '<td>'+fmt(r.amount_yi,2)+'</td>' +
+      '<td>'+signed(r.main_net_wan,0)+'</td>' +
+      '<td>'+signed(r.main_pct,1)+'%</td>' +
+      '<td>'+fmt(r.mktcap_yi,1)+'</td></tr>';
+  });
+  h += '</tbody>';
+  tbl.innerHTML = h;
+  document.getElementById('note').textContent =
+    '点击任意一行 → 打开实时看板。静态版只固化了贵州茅台（600519）一份预测快照；' +
+    '其他标的需在本机运行 python live.py 后才能实时跟踪。';
+}
+
+function go(code){
+  location.href = 'live.html';
+}
+document.getElementById('tbl').addEventListener('click', function(e){
+  const tr = e.target.closest('tr[data-code]');
+  if (tr) go(tr.dataset.code);
+});
+render();
+</script>
+</body>
+</html>
