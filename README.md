@@ -144,6 +144,11 @@ python web.py --port 8010         # 主入口：/live 与 /rank 已挂在同一�
 
 自行部署：仓库 **Settings → Pages → Source 选 `Deploy from a branch` → 分支 `main` / 目录 `/docs`**。
 
+> 若 `git push` 被代理拒绝（`github.com:443` 的 CONNECT 返回 502），改用
+> `GH_TOKEN=ghp_xxx python tools/deploy_api.py`：它走 `api.github.com` 的 Git Data API
+> 直接同步树，内容一致。注意该 token 若没有 `workflow` 权限，含 `.github/workflows/` 的树
+> 会被 GitHub 整体拒绝（返回 404），脚本会自动跳过该目录。
+
 > 静态站没有后端：`/live`、`/rank`、`/report?code=XXX` 是本地版 `web.py` 的路由形态，Pages 上不存在。
 > 改页面后跑一次 `python tools/check_docs_links.py`，它会拦下「站内绝对路径」与
 > 「目标文件不存在」两类必然 404 的链接（Pages 项目站根是 `/<repo>/`，`href="/xxx"` 会绕过前缀）。
