@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>实时报价 · 浏览器直连行情</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f6f8;color:#1f2328;
+  font:15px/1.7 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:1000px;margin:0 auto;padding:32px 18px 64px}
+.nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.nav a{text-decoration:none;font-size:13.5px;color:#5b6470;background:#fff;
+  border:1px solid #dfe3e8;border-radius:999px;padding:5px 14px}
+.nav a:hover{border-color:#93c5fd;color:#1d4ed8}
+.nav a.on{background:#2ca02c;color:#fff;border-color:#2ca02c}
+h1{font-size:27px;margin:0 0 8px}
+h2{font-size:17px;margin:0 0 10px}
+.lead{color:#5b6470;font-size:15px;margin:0 0 6px}
+.card{background:#fff;border:1px solid #dfe3e8;border-radius:12px;
+  padding:20px 22px;margin:16px 0}
+.muted{color:#6b7280;font-size:13px;line-height:1.7}
+.tiny{color:#8a94a2;font-size:12px}
+.warn{background:#fffbeb;border-left:4px solid #f59e0b;padding:12px 16px;
+  border-radius:6px;font-size:13.5px;margin:14px 0}
+.foot{color:#6b7280;font-size:12.5px;margin-top:26px;line-height:1.8}
+
+/* 搜索行 */
+.search{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 4px}
+.search input{flex:1 1 220px;min-width:160px;font:inherit;font-size:15px;
+  padding:10px 13px;border:1px solid #dfe3e8;border-radius:10px;background:#fff;
+  outline:none}
+.search input:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(147,197,253,.28)}
+.search button{font:inherit;font-size:14.5px;font-weight:600;color:#fff;
+  background:#2ca02c;border:1px solid #2ca02c;border-radius:10px;
+  padding:10px 20px;cursor:pointer}
+.search button:hover{background:#258025}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0}
+.chips button{font:inherit;font-size:12.5px;color:#5b6470;background:#eef2f7;
+  border:1px solid #e3e8ee;border-radius:999px;padding:4px 12px;cursor:pointer}
+.chips button:hover{background:#e2e8f0;color:#1d4ed8}
+
+/* 报价头 */
+.quote{display:flex;justify-content:space-between;align-items:flex-start;
+  gap:18px;flex-wrap:wrap}
+.qname{font-size:19px;font-weight:700}
+.qcode{color:#8a94a2;font-size:13.5px;font-weight:500;margin-left:6px}
+.price{font-size:40px;font-weight:700;line-height:1.15;letter-spacing:-.5px;
+  font-variant-numeric:tabular-nums}
+.chg{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.up{color:#c0392b}
+.down{color:#1e7f43}
+.flat{color:#5b6470}
+.state{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;
+  border-radius:999px;padding:3px 11px;background:#eef2f7;color:#5b6470}
+.dot{width:7px;height:7px;border-radius:50%;background:#9aa4b2}
+.state.live{background:#eaf7ef;color:#1e7f43}
+.state.live .dot{background:#22a559;animation:pulse 1.6s infinite}
+.state.rest{background:#fff7ed;color:#b45309}
+.state.rest .dot{background:#f59e0b}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.28}}
+
+/* KPI 网格 */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0 4px}
+.kpi{background:#fafbfc;border:1px solid #eef1f4;border-radius:10px;
+  padding:10px 12px}
+.kpi .k{font-size:11.5px;color:#8a94a2;letter-spacing:.02em}
+.kpi .v{font-size:15.5px;font-weight:600;font-variant-numeric:tabular-nums;
+  margin-top:2px}
+
+/* 图表 */
+.chartbox{margin-top:18px}
+.chartbox svg{width:100%;height:auto;display:block}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#8a94a2;
+  margin-top:6px}
+.legend i{display:inline-block;width:14px;height:0;border-top:2px solid;
+  vertical-align:middle;margin-right:5px}
+
+.err{display:none;background:#fef2f2;border-left:4px solid #ef4444;
+  padding:10px 14px;border-radius:6px;font-size:13px;color:#991b1b;margin:12px 0}
+@media(max-width:780px){
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .price{font-size:32px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="nav">
+  <a href="index.html">首页</a>
+  <a href="realtime.html" class="on">实时报价</a>
+  <a href="live.html">预测看板</a>
+  <a href="rank.html">涨幅榜</a>
+</div>
+
+<h1>实时报价</h1>
+<p class="lead">这一页<b>不是快照</b>：打开后每 3 秒由<b>你的浏览器</b>直连东方财富行情接口拉一次，
+价格、五档之外的开高低量额都是当下真实值。服务器不参与，也不存任何数据。</p>
+
+<div class="search">
+  <input id="code" type="text" inputmode="numeric" placeholder="输入代码，如 600519 / 000001 / 300750" autocomplete="off">
+  <button id="go">追踪</button>
+</div>
+<div class="chips" id="chips"></div>
+
+<div class="err" id="err"></div>
+
+<div class="card" style="margin-top:16px">
+  <div class="quote">
+    <div>
+      <div class="qname"><span id="name">—</span><span class="qcode" id="codeLabel"></span></div>
+      <div class="muted" id="stateLine" style="margin-top:2px">
+        <span class="state" id="state"><span class="dot"></span><span id="stateText">等待数据</span></span>
+        <span class="tiny" id="lastUpd" style="margin-left:8px"></span>
+      </div>
+    </div>
+    <div style="text-align:right">
+      <div class="price flat" id="price">—</div>
+      <div class="chg flat" id="chg">—</div>
+    </div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="k">今开</div><div class="v" id="open">—</div></div>
+    <div class="kpi"><div class="k">最高</div><div class="v" id="high">—</div></div>
+    <div class="kpi"><div class="k">最低</div><div class="v" id="low">—</div></div>
+    <div class="kpi"><div class="k">昨收</div><div class="v" id="prev">—</div></div>
+    <div class="kpi"><div class="k">成交量</div><div class="v" id="vol">—</div></div>
+    <div class="kpi"><div class="k">成交额</div><div class="v" id="amt">—</div></div>
+    <div class="kpi"><div class="k">量比</div><div class="v" id="vr">—</div></div>
+    <div class="kpi"><div class="k">换手率</div><div class="v" id="turn">—</div></div>
+  </div>
+
+  <div class="chartbox">
+    <div id="chart"></div>
+    <div class="legend">
+      <span><i style="border-color:#c0392b"></i>价格</span>
+      <span><i style="border-color:#b9c1cc;border-top-style:dashed"></i>昨收</span>
+      <span id="chartNote"></span>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>这一页能做什么、不能做什么</h2>
+  <div class="muted">
+    <b>能：</b>实时看任意沪深/科创板个股的现价、涨跌、开高低、量额、量比、换手，以及当日分时走势。
+    数据来自东方财富 <code>push2</code> / <code>push2his</code> 公开接口（带 CORS，浏览器可直连）。<br>
+    <b>不能：</b>这里<b>没有预测</b>。14 路专家要按历史误差在线调权、逐 tick 结算，
+    那是常驻进程干的活，静态站点算不了——预测请看<a href="live.html">预测看板</a>里的真实运行快照。
+  </div>
+  <div class="warn">
+    盘中每 3 秒刷新一次；收盘后价格定格，页面不再变化。<b>行情有延迟，仅供研究，不构成投资建议。</b>
+  </div>
+</div>
+
+<div class="foot">
+  数据源：东方财富公开行情接口（浏览器直连，跨域头为 <code>*</code>）。<br>
+  本页不经过任何自建服务器，也不记录你的查询。本项目仅用于技术研究与系统设计演示。
+</div>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var UT = "fa5fd1943c7b386f172d6893dbfba10b";
+  var REFRESH_MS = 3000;
+  var TRENDS_MS = 20000;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var codeInput = $("code");
+
+  var state = {
+    symbol: "600519",
+    secid: "1.600519",
+    timer: null,
+    trendTimer: null,
+    trends: [],
+    prevClose: null,
+    lastTrendAt: 0,
+    reqSeq: 0
+  };
+
+  var QUICK = [
+    ["600519", "贵州茅台"], ["000001", "平安银行"], ["300750", "宁德时代"],
+    ["601318", "中国平安"], ["688836", "宇树科技"], ["002594", "比亚迪"]
+  ];
+
+  /* ---------- 工具 ---------- */
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+
+  function fmtPrice(v) {
+    if (v === null || v === undefined || isNaN(v)) return "—";
+    return v.toFixed(2);
+  }
+
+  function fmtAmount(yuan) {
+    if (!yuan && yuan !== 0) return "—";
+    if (yuan >= 1e8) return (yuan / 1e8).toFixed(2) + " 亿";
+    if (yuan >= 1e4) return (yuan / 1e4).toFixed(2) + " 万";
+    return yuan.toFixed(0);
+  }
+
+  function fmtVol(hand) {
+    if (!hand && hand !== 0) return "—";
+    if (hand >= 1e4) return (hand / 1e4).toFixed(2) + " 万手";
+    return hand.toFixed(0) + " 手";
+  }
+
+  // 6 开头沪市，其余（0/3/4/8）按深市或北交所
+  function toSecid(code) {
+    var c = String(code).replace(/\D/g, "");
+    if (c.length !== 6) return null;
+    return (c.charAt(0) === "6" ? "1." : "0.") + c;
+  }
+
+  function marketState() {
+    var now = new Date();
+    var d = now.getDay();
+    var mins = now.getHours() * 60 + now.getMinutes();
+    if (d === 0 || d === 6) return { cls: "rest", text: "休市（周末）" };
+    if (mins >= 555 && mins < 570) return { cls: "rest", text: "集合竞价" };
+    if (mins >= 570 && mins < 690) return { cls: "live", text: "交易中" };
+    if (mins >= 690 && mins < 780) return { cls: "rest", text: "午间休市" };
+    if (mins >= 780 && mins < 900) return { cls: "live", text: "交易中" };
+    if (mins < 555) return { cls: "rest", text: "未开盘" };
+    return { cls: "rest", text: "已收盘" };
+  }
+
+  function jsonp(url) {
+    // 东财接口带 CORS，正常用 fetch；失败再退回 script 标签
+    return new Promise(function (resolve, reject) {
+      fetch(url, { cache: "no-store" })
+        .then(function (r) { return r.json(); })
+        .then(resolve)
+        .catch(function () {
+          var cb = "__em" + Math.floor(Math.random() * 1e9);
+          var s = document.createElement("script");
+          var t = setTimeout(function () { cleanup(); reject(new Error("timeout")); }, 8000);
+          function cleanup() {
+            clearTimeout(t);
+            try { delete window[cb]; } catch (e) { window[cb] = undefined; }
+            if (s.parentNode) s.parentNode.removeChild(s);
+          }
+          window[cb] = function (d) { cleanup(); resolve(d); };
+          s.onerror = function () { cleanup(); reject(new Error("script error")); };
+          s.src = url + (url.indexOf("?") >= 0 ? "&" : "?") + "cb=" + cb;
+          document.head.appendChild(s);
+        });
+    });
+  }
+
+  function showError(msg) {
+    var el = $("err");
+    el.textContent = msg;
+    el.style.display = "block";
+  }
+  function clearError() { $("err").style.display = "none"; }
+
+  // 东财在停牌/无数据时会给 "-" 或 null，统一收敛成数字或 null，避免 NaN
+  function num(v) {
+    if (v === null || v === undefined || v === "" || v === "-") return null;
+    var n = Number(v);
+    return isNaN(n) ? null : n;
+  }
+
+  /* ---------- 报价 ---------- */
+  function loadQuote() {
+    var seq = ++state.reqSeq;
+    var url = "https://push2.eastmoney.com/api/qt/stock/get?secid=" + state.secid +
+      "&fields=f43,f44,f45,f46,f47,f48,f50,f57,f58,f60,f86,f168,f169,f170&ut=" + UT;
+
+    jsonp(url).then(function (res) {
+      if (seq !== state.reqSeq) return;      // 丢弃过期响应
+      var d = res && res.data;
+      if (!d || num(d.f43) === null) {
+        showError("这个代码没取到行情（可能已退市、停牌或代码有误）。");
+        return;
+      }
+      clearError();
+      renderQuote(d);
+    }).catch(function () {
+      if (seq !== state.reqSeq) return;
+      showError("行情接口没连上：可能是网络/代理拦截，或接口临时限流。页面会自动重试。");
+    });
+  }
+
+  function renderQuote(d) {
+    var price = num(d.f43) / 100;
+    var prevRaw = num(d.f60);
+    var prev = prevRaw === null ? null : prevRaw / 100;
+    var chgRaw = num(d.f169);
+    var pctRaw = num(d.f170);
+    var chg = chgRaw === null ? null : chgRaw / 100;
+    var pct = pctRaw === null ? null : pctRaw / 100;
+
+    // 涨跌额缺失时用现价与昨收自行推算，保证方向色不丢
+    if (chg === null && prev !== null) chg = price - prev;
+    if (pct === null && prev !== null && prev !== 0) pct = (price - prev) / prev * 100;
+
+    // 分时图以昨收为基准：报价往往比分时晚到，首次拿到昨收要补画一次，
+    // 否则基准会退化成第一个分钟点，刻度颜色与上下边界都会算错
+    var hadBase = state.prevClose !== null && state.prevClose !== undefined;
+    state.prevClose = prev;
+
+    $("name").textContent = d.f58 || "—";
+    $("codeLabel").textContent = d.f57 || "";
+    $("price").textContent = fmtPrice(price);
+
+    var dir = chg > 0 ? "up" : (chg < 0 ? "down" : "flat");
+    $("price").className = "price " + dir;
+    $("chg").className = "chg " + dir;
+    $("chg").textContent = chg === null
+      ? "—"
+      : (chg > 0 ? "+" : "") + fmtPrice(chg) +
+        "  (" + (pct > 0 ? "+" : "") + pct.toFixed(2) + "%)";
+
+    $("open").textContent = fmtPrice(num(d.f46) === null ? null : num(d.f46) / 100);
+    $("high").textContent = fmtPrice(num(d.f44) === null ? null : num(d.f44) / 100);
+    $("low").textContent = fmtPrice(num(d.f45) === null ? null : num(d.f45) / 100);
+    $("prev").textContent = fmtPrice(prev);
+    $("vol").textContent = fmtVol(num(d.f47));
+    $("amt").textContent = fmtAmount(num(d.f48));
+    $("vr").textContent = num(d.f50) === null ? "—" : (num(d.f50) / 100).toFixed(2);
+    $("turn").textContent = num(d.f168) === null ? "—" : (num(d.f168) / 100).toFixed(2) + "%";
+
+    var st = marketState();
+    $("state").className = "state " + st.cls;
+    $("stateText").textContent = st.text;
+
+    if (d.f86) {
+      var t = new Date(d.f86 * 1000);
+      $("lastUpd").textContent = "行情时间 " + pad(t.getHours()) + ":" +
+        pad(t.getMinutes()) + ":" + pad(t.getSeconds());
+    }
+
+    document.title = (d.f58 ? d.f58 + " " : "") + fmtPrice(price) + " · 实时报价";
+
+    if (!hadBase && state.trends.length) drawChart();
+
+    if (Date.now() - state.lastTrendAt > TRENDS_MS) loadTrends();
+  }
+
+  /* ---------- 分时 ---------- */
+  function loadTrends() {
+    state.lastTrendAt = Date.now();
+    var url = "https://push2his.eastmoney.com/api/qt/stock/trends2/get?secid=" + state.secid +
+      "&fields1=f1,f2,f3,f4,f5,f6,f7,f8&fields2=f51,f53,f56&iscr=0&ndays=1&ut=" + UT;
+
+    jsonp(url).then(function (res) {
+      var d = res && res.data;
+      if (!d || !d.trends || !d.trends.length) return;
+      var pts = [];
+      for (var i = 0; i < d.trends.length; i++) {
+        var parts = String(d.trends[i]).split(",");
+        var p = parseFloat(parts[1]);
+        if (!isNaN(p)) pts.push({ t: parts[0], p: p });
+      }
+      state.trends = pts;
+      drawChart();
+    }).catch(function () { /* 图表失败不影响报价 */ });
+  }
+
+  function drawChart() {
+    var pts = state.trends;
+    var box = $("chart");
+    if (!pts.length) { box.innerHTML = '<div class="tiny">暂无分时数据</div>'; return; }
+
+    var W = 720, H = 240, PL = 8, PR = 56, PT = 12, PB = 22;
+    var base = state.prevClose || pts[0].p;
+
+    // 以昨收为中心对称取范围，涨跌幅视觉不失真
+    var maxDev = 0;
+    for (var i = 0; i < pts.length; i++) {
+      var dev = Math.abs(pts[i].p - base);
+      if (dev > maxDev) maxDev = dev;
+    }
+    if (maxDev < base * 0.002) maxDev = base * 0.002;   // 避免横盘时线贴死中线
+    maxDev *= 1.03;                                       // 留 3% 余量，最高/最低不贴边
+    var hi = base + maxDev, lo = base - maxDev;
+    var N = 241;                                          // A 股 240 分钟 + 起点
+
+    function X(idx) { return PL + (W - PL - PR) * (idx / (N - 1)); }
+    function Y(v) { return PT + (H - PT - PB) * (1 - (v - lo) / (hi - lo)); }
+
+    var line = [], area = [];
+    for (var j = 0; j < pts.length; j++) {
+      var x = X(j).toFixed(1), y = Y(pts[j].p).toFixed(1);
+      line.push(x + "," + y);
+      area.push(x + "," + y);
+    }
+
+    var isUp = pts[pts.length - 1].p >= base;
+    var color = isUp ? "#c0392b" : "#1e7f43";
+    var baseY = Y(base).toFixed(1);
+
+    var grid = "";
+    var ratios = [0, 0.25, 0.5, 0.75, 1];
+    for (var g = 0; g < ratios.length; g++) {
+      var gy = (PT + (H - PT - PB) * ratios[g]).toFixed(1);
+      grid += '<line x1="' + PL + '" y1="' + gy + '" x2="' + (W - PR) + '" y2="' + gy +
+        '" stroke="#eef1f4" stroke-width="1"/>';
+    }
+
+    var labels = "";
+    var prices = [hi, (hi + base) / 2, base, (lo + base) / 2, lo];
+    for (var k = 0; k < prices.length; k++) {
+      var py = (PT + (H - PT - PB) * (k / 4)).toFixed(1);
+      var cls = prices[k] > base ? "#c0392b" : (prices[k] < base ? "#1e7f43" : "#8a94a2");
+      labels += '<text x="' + (W - PR + 6) + '" y="' + (parseFloat(py) + 4) +
+        '" font-size="10.5" fill="' + cls + '">' + prices[k].toFixed(2) + "</text>";
+    }
+
+    var times = [[0, "09:30"], [60, "10:30"], [120, "11:30/13:00"], [180, "14:00"], [240, "15:00"]];
+    for (var m = 0; m < times.length; m++) {
+      labels += '<text x="' + X(times[m][0]).toFixed(1) + '" y="' + (H - 6) +
+        '" font-size="10" fill="#a8b0bc" text-anchor="' +
+        (m === 0 ? "start" : (m === times.length - 1 ? "end" : "middle")) + '">' +
+        times[m][1] + "</text>";
+    }
+
+    var svg =
+      '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg" role="img">' +
+      grid +
+      '<line x1="' + PL + '" y1="' + baseY + '" x2="' + (W - PR) + '" y2="' + baseY +
+        '" stroke="#b9c1cc" stroke-width="1" stroke-dasharray="4 4"/>' +
+      '<polygon points="' + area.join(" ") + " " + X(pts.length - 1).toFixed(1) + "," + (H - PB) +
+        " " + X(0).toFixed(1) + "," + (H - PB) + '" fill="' + color + '" opacity="0.07"/>' +
+      '<polyline points="' + line.join(" ") + '" fill="none" stroke="' + color +
+        '" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/>' +
+      '<circle cx="' + X(pts.length - 1).toFixed(1) + '" cy="' + Y(pts[pts.length - 1].p).toFixed(1) +
+        '" r="3" fill="' + color + '"/>' +
+      labels +
+      "</svg>";
+
+    box.innerHTML = svg;
+
+    var pctNow = ((pts[pts.length - 1].p - base) / base * 100);
+    $("chartNote").textContent = pts.length + " 个分钟点 · 相对昨收 " +
+      (pctNow > 0 ? "+" : "") + pctNow.toFixed(2) + "%";
+  }
+
+  /* ---------- 切换标的 ---------- */
+  function switchTo(code) {
+    var secid = toSecid(code);
+    if (!secid) {
+      showError("请输入 6 位股票代码，例如 600519。");
+      return;
+    }
+    clearError();
+    state.secid = secid;
+    state.symbol = String(code).replace(/\D/g, "");
+    state.trends = [];
+    state.prevClose = null;
+    state.lastTrendAt = 0;
+    $("chart").innerHTML = '<div class="tiny">加载分时…</div>';
+    codeInput.value = state.symbol;
+
+    try {
+      var u = new URL(location.href);
+      u.searchParams.set("code", state.symbol);
+      history.replaceState(null, "", u.toString());
+    } catch (e) { /* 老浏览器忽略 */ }
+
+    loadQuote();
+    loadTrends();
+  }
+
+  /* ---------- 启动 ---------- */
+  function boot() {
+    var chips = $("chips");
+    QUICK.forEach(function (item) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = item[0] + " " + item[1];
+      b.addEventListener("click", function () { switchTo(item[0]); });
+      chips.appendChild(b);
+    });
+
+    $("go").addEventListener("click", function () { switchTo(codeInput.value); });
+    codeInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") switchTo(codeInput.value);
+    });
+
+    var q = null;
+    try { q = new URL(location.href).searchParams.get("code"); } catch (e) {}
+    switchTo(q || "600519");
+
+    state.timer = setInterval(loadQuote, REFRESH_MS);
+    document.addEventListener("visibilitychange", function () {
+      // 后台标签页不空转，回来立刻补一次
+      if (document.hidden) {
+        clearInterval(state.timer);
+      } else {
+        loadQuote();
+        state.timer = setInterval(loadQuote, REFRESH_MS);
+      }
+    });
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>

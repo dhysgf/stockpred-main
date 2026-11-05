@@ -128,14 +128,20 @@ python web.py --port 8010         # 主入口：/live 与 /rank 已挂在同一�
 
 👉 **<https://dhysgf.github.io/stockpred-main/>**（已通过 GitHub Pages 发布，源目录 `docs/`）
 
-站点**只收录实时系统**，共三页，全部由本地引擎的真实运行结果固化而成：
+站点共四页。**只有实时报价是真·实时**，其余是真实运行结果的固化快照：
 
-- `docs/index.html` 落地页：系统定位、一次 tick 的链路、14 路专家清单、快照机制与部署边界
-- `docs/live.html` 实时看板：当前预测 / 有效权重 / 各路贡献 / 历史命中率与 MAE、预测价 vs 到点真实价、今日结算与区间覆盖率
-- `docs/rank.html` 涨幅榜爬虫：东方财富 A 股 / 科创板 Top50，点行直达对应标的看板
+- `docs/realtime.html` **实时报价**：输入任意代码，每 3 秒由浏览器直连东方财富行情接口刷新现价、
+  涨跌、开高低、量额、量比、换手与当日分时。东财接口带 `Access-Control-Allow-Origin: *`，
+  所以静态站也能实时——服务器不参与，也不记录查询
+- `docs/index.html` 落地页：系统定位、一次 tick 的链路、14 路专家清单、实时/快照边界说明
+- `docs/live.html` 预测看板：当前预测 / 有效权重 / 各路贡献 / 历史命中率与 MAE、预测价 vs 到点真实价、今日结算与区间覆盖率
+- `docs/rank.html` 涨幅榜爬虫：东方财富 A 股 / 科创板 Top50，点行直达该股实时报价
 
-页面不放手工数字，由 `tools/build_live_snapshot.py`、`tools/build_rank_snapshot.py`
-从 `data/stockpred.db` 直接生成，重新出页即可刷新。
+> 报价能实时，**预测不能**：14 路要按已实现误差在线调权、逐 tick 结算，属于常驻进程干的活，
+> GitHub Pages 只有静态文件，算不了 Hedge 权重。所以看板上的每个数字都是本机引擎的实测固化结果。
+
+页面不放手工数字，`live.html` / `rank.html` 由 `tools/build_live_snapshot.py`、
+`tools/build_rank_snapshot.py` 从 `data/stockpred.db` 直接生成，重新出页即可刷新。
 
 > **日线多模型报告已从站点下线**（原 `report_*.html` / `analysis.html` / `news_snapshot.json`）。
 > 那套系统代码仍在仓库里（`run.py` / `make_report.py` / `web.py`），
@@ -491,7 +497,8 @@ stockpred/
   universe.py             股票池成分获取（沪深300 / 中证500）
   visualize.py            预测图（含拐点竖线与区间带）/ 回测图
 
-docs/                     GitHub Pages 站点：首页 / 实时看板 / 涨幅榜（由 tools/ 脚本生成）
+docs/                     GitHub Pages 站点：实时报价 / 首页 / 预测看板 / 涨幅榜
+docs/realtime.html        实时报价（纯前端直连东财行情，手写，不参与生成）
 tools/build_live_snapshot.py 从 data/stockpred.db 渲染 docs/live.html
 tools/build_rank_snapshot.py 渲染 docs/rank.html（可 --fetch 现场抓榜）
 data/stockpred.db         SQLite：日线/分钟线/预测/拐点/榜单/大模型配置（自动生成）

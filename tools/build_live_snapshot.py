@@ -438,7 +438,8 @@ TMPL = """<!DOCTYPE html>
 
 <div class="nav">
   <a href="index.html">首页</a>
-  <a href="live.html" class="on">实时看板</a>
+  <a href="realtime.html">实时报价</a>
+  <a href="live.html" class="on">预测看板</a>
   <a href="rank.html">涨幅榜</a>
 </div>
 

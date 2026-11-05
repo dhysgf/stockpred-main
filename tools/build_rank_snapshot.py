@@ -32,7 +32,8 @@ C_DOWN = "#1e7f43"
 
 NAV = """<div class="nav">
   <a href="index.html">首页</a>
-  <a href="live.html">实时看板</a>
+  <a href="realtime.html">实时报价</a>
+  <a href="live.html">预测看板</a>
   <a href="rank.html" class="on">涨幅榜</a>
 </div>"""
 
@@ -268,12 +269,12 @@ function render(){
   h += '</tbody>';
   tbl.innerHTML = h;
   document.getElementById('note').textContent =
-    '点击任意一行 → 打开实时看板。静态版只固化了贵州茅台（600519）一份预测快照；' +
-    '其他标的需在本机运行 python live.py 后才能实时跟踪。';
+    '点击任意一行 → 打开该股的实时报价（浏览器直连行情，3 秒刷新）。' +
+    '预测快照目前只固化了贵州茅台（600519）一份；其他标的的预测需在本机运行 python live.py。';
 }
 
 function go(code){
-  location.href = 'live.html';
+  location.href = 'realtime.html?code=' + encodeURIComponent(code);
 }
 document.getElementById('tbl').addEventListener('click', function(e){
   const tr = e.target.closest('tr[data-code]');

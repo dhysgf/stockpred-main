@@ -27,14 +27,20 @@ h2{font-size:17px;margin:0 0 8px}
 a.big{display:block;text-decoration:none;color:inherit;border:1px solid #dfe3e8;
   border-radius:14px;padding:22px 24px;background:#fff;transition:.16s}
 a.big:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(31,35,40,.09)}
+a.big.rt{grid-column:1/-1;border-color:#93c5fd;
+  background:linear-gradient(180deg,#eff6ff,#fff)}
 a.big.live{border-color:#86efac;background:linear-gradient(180deg,#f0fdf4,#fff)}
 a.big.rank{border-color:#fdba74;background:linear-gradient(180deg,#fff7ed,#fff)}
 a.big b{display:block;font-size:19px;margin-bottom:6px}
 a.big .kicker{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;
   color:#8a94a2;margin-bottom:4px}
 a.big .go{display:inline-block;margin-top:12px;font-size:13.5px;font-weight:600}
+a.big.rt .go{color:#1d4ed8}
 a.big.live .go{color:#1e7f43}
 a.big.rank .go{color:#c2410c}
+.livetag{display:inline-block;font-size:11px;font-weight:700;color:#fff;
+  background:#22a559;border-radius:999px;padding:1px 8px;margin-left:8px;
+  vertical-align:middle;letter-spacing:.02em}
 .warn{background:#fffbeb;border-left:4px solid #f59e0b;padding:12px 16px;
   border-radius:6px;font-size:13.5px;margin:14px 0}
 table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:8px}
@@ -63,7 +69,8 @@ a.link:hover{text-decoration:underline}
 
 <div class="nav">
   <a href="index.html" class="on">首页</a>
-  <a href="live.html">实时看板</a>
+  <a href="realtime.html">实时报价</a>
+  <a href="live.html">预测看板</a>
   <a href="rank.html">涨幅榜</a>
 </div>
 
@@ -73,6 +80,7 @@ a.link:hover{text-decoration:underline}
 到期用真实成交价结算，误差回写给每一路专家。
 附东方财富涨幅榜爬虫作为选股入口。</p>
 <div>
+  <span class="tag">实时报价 · 浏览器直连 · 3 秒</span>
   <span class="tag">14 路专家 · Hedge 在线加权</span>
   <span class="tag">1 / 3 / 5 分钟预测</span>
   <span class="tag">80% 区间 + q80 自校准</span>
@@ -81,10 +89,17 @@ a.link:hover{text-decoration:underline}
 </div>
 
 <div class="entry">
+  <a class="big rt" href="realtime.html">
+    <div class="kicker">Live Quote · 浏览器直连</div>
+    <b>实时追踪股价 →<span class="livetag">真·实时</span></b>
+    <div class="muted">输入任意沪深 / 科创板代码，<strong>每 3 秒</strong>由你的浏览器直连东方财富行情接口刷新：
+      现价、涨跌、今开高低、量额、量比、换手，加当日分时走势。这一页不是快照，服务器不参与。</div>
+    <span class="go">开始追踪</span>
+  </a>
   <a class="big live" href="live.html">
-    <div class="kicker">Live Dashboard</div>
-    <b>实时预测看板 →</b>
-    <div class="muted">14 路专家的当前预测、有效权重、贡献、历史命中率与 MAE；
+    <div class="kicker">Prediction Snapshot</div>
+    <b>预测看板 →</b>
+    <div class="muted">14 路专家的当前预测、有效权重、贡献、命中率与 MAE；
       预测价与到点真实价的对照；今日结算与区间覆盖率。</div>
     <span class="go">打开看板</span>
   </a>
@@ -92,7 +107,7 @@ a.link:hover{text-decoration:underline}
     <div class="kicker">East Money Crawler</div>
     <b>涨幅榜爬虫 →</b>
     <div class="muted">从东方财富抓沪深全市场与科创板，各取涨幅前 50；
-      含换手、量比、成交额、主力净额、近涨停标记；点行直达看板。</div>
+      含换手、量比、成交额、主力净额、近涨停标记；点行直达实时报价。</div>
     <span class="go">打开涨幅榜</span>
   </a>
 </div>
@@ -131,13 +146,23 @@ a.link:hover{text-decoration:underline}
 </div>
 
 <div class="card">
-  <h2>线上为什么是「快照」而不是实时接口</h2>
+  <h2>哪些能实时，哪些只能是快照</h2>
+  <table>
+    <thead><tr><th style="width:110px">内容</th><th style="width:96px">实时性</th><th>原因</th></tr></thead>
+    <tbody>
+      <tr><td><b>股价与分时</b></td><td><b style="color:#1e7f43">真·实时</b></td>
+        <td>行情接口带 CORS（<code>Access-Control-Allow-Origin: *</code>），浏览器可直连，
+          <a href="realtime.html">实时报价</a>每 3 秒刷新一次，服务器不参与</td></tr>
+      <tr><td><b>14 路预测</b></td><td><b style="color:#b45309">只能是快照</b></td>
+        <td>要按已实现误差在线调权、逐 tick 结算，属于常驻进程；GitHub Pages 只有静态文件，
+          没有执行环境，算不了 Hedge 权重，也写不了库</td></tr>
+    </tbody>
+  </table>
   <div class="warn">
-    GitHub Pages 只能托管<b>静态文件</b>，没有执行环境：不能轮询行情、不能写库、不能算 Hedge 权重。
-    所以这个站点上的每一页都是<b>真实运行结果的固化快照</b>——数字来自本机引擎的实测输出，
-    不是示意值，但<b>不会自己刷新</b>。
+    所以<a href="live.html">预测看板</a>上的每个数字都是<b>真实运行的固化结果</b>——来自本机引擎实测，
+    不是示意值，但<b>不会自己刷新</b>。能刷新的只有行情本身。
   </div>
-  <div class="muted">想要每 3 秒跳动，必须跑在常驻进程上（本机 / VPS / 内网穿透）：</div>
+  <div class="muted">想让预测也每 3 秒跳动，必须跑在常驻进程上（本机 / VPS / 内网穿透）：</div>
   <pre>python live.py --port 8020        # 实时服务（含 /live 与 /rank）
 python live.py --rank             # 同时挂载涨幅榜
 python run.py --sync-db 600519    # 同步日线与指标入库</pre>
