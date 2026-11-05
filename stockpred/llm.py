@@ -50,6 +50,11 @@ def _key_for(provider: str) -> str:
         v = os.environ.get(env, "").strip()
         if v:
             return v
+    # 对外部署（web.py --require-key）会置位：不读服务器自己的密钥与 secrets.json，
+    # 只认访客带进来的那一份。访客没填 → 新闻/政策研判降级为本地词典情绪，
+    # 量化分析照常跑，不会烧机器主人的额度。
+    if os.environ.get("STOCKPRED_NO_SERVER_KEY", "").strip().lower() in ("1", "true", "yes", "on"):
+        return ""
     sec = _read_secrets()
     for k in ("llm_key", f"{provider}_key", f"{provider}_api_key",
               "dashscope_key" if provider == "qwen" else ""):

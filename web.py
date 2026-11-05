@@ -38,6 +38,13 @@ from stockpred.llm import status as llm_status, chat as llm_chat, _override_targ
 HOST = "127.0.0.1"
 PORT = 8010
 
+# ---------------- 对外分享开关（本机自己用默认全关） ----------------
+# --host 0.0.0.0 让局域网可访问；--password 给公网访问加口令；
+# --require-key 让访客必须自带大模型 Key，服务器内置密钥不再兜底（不烧自己的额度）。
+SITE_PASSWORD = ""          # 非空 → 公网来源必须输入口令
+REQUIRE_USER_KEY = False    # True → 子进程禁用服务器密钥，只用访客自己的
+_AUTH_TOKEN = ""            # 启动时生成的口令通过凭证（重启即失效）
+
 BASE = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -766,6 +773,10 @@ def render_home(sess: dict | None = None, notice: str = "") -> str:
     if has_own:
         llm_line = (f"<span class='tag'>本次会话使用你填的 Key：{html.escape(_mask(sess['api_key']))}"
                     f" / {html.escape(sess.get('model') or '默认')}</span>")
+    elif REQUIRE_USER_KEY:
+        # 对外分享模式：服务器密钥不兜底，明确告诉访客「不填就没有大模型研判」
+        llm_line = ("<span class='tag warn'>本站要求使用你自己的 Key</span> "
+                    "<span class='muted'>未填则新闻/政策研判用本地词典情绪，量化预测照常</span>")
     elif st["ready"]:
         llm_line = (f"<span class='tag'>未填 Key，将使用服务器默认：{html.escape(st['providers'][0])} / "
                     f"{html.escape(st['model'])}</span>")
@@ -774,6 +785,19 @@ def render_home(sess: dict | None = None, notice: str = "") -> str:
                     "<span class='muted'>新闻/政策研判会降级为本地词典情绪</span>")
 
     tips = "　".join(f"{html.escape(n)}" for n, _, _ in COMMON_ENDPOINTS)
+    if REQUIRE_USER_KEY:
+        key_help = ("<b>请填入你自己的 Key</b>：这台机器不提供公共额度，也不会用机器主人的额度替你跑。"
+                    "填了只对<b>你这次浏览</b>生效，仅存在服务端内存里"
+                    "（不写日志、不落盘、不进网址），关掉浏览器或服务重启即失效。"
+                    "不填也能用全部量化预测，只是新闻/政策那段改走本地词典情绪。")
+        key_label = "API Key（请填你自己的）"
+        key_ph = "sk-... / dashscope key / deepseek key"
+    else:
+        key_help = ("<b>Key 输入框是可选的</b>：留空就用服务器内置的 Key（已配置好，直接可用）；"
+                    "想用自己的额度再填，填了只对<b>你这次浏览</b>生效，仅存在服务端内存里"
+                    "（不写日志、不落盘、不进网址），关掉浏览器或服务重启即失效。")
+        key_label = "API Key（留空 = 用服务器内置 Key）"
+        key_ph = "留空即可；或填 sk-... / dashscope key"
     notice_html = f"<div class='card' style='border-color:#86efac;background:#f0fdf4'>{html.escape(notice)}</div>" if notice else ""
 
     # 模型下拉：标注哪些是免费额度；当前会话选中的项打勾
@@ -809,12 +833,10 @@ def render_home(sess: dict | None = None, notice: str = "") -> str:
 
     <div class="card">
       <h3>大模型设置</h3>
-      <div class="muted"><b>Key 输入框是可选的</b>：留空就用服务器内置的 Key（已配置好，直接可用）；
-      想用自己的额度再填，填了只对<b>你这次浏览</b>生效，仅存在服务端内存里
-      （不写日志、不落盘、不进网址），关掉浏览器或服务重启即失效。</div>
+      <div class="muted">{key_help}</div>
       <form method="post" action="/settings">
-        <div style="margin-top:10px"><label>API Key（留空 = 用服务器内置 Key）</label><br>
-          <input type="password" name="api_key" placeholder="留空即可；或填 sk-... / dashscope key"
+        <div style="margin-top:10px"><label>{key_label}</label><br>
+          <input type="password" name="api_key" placeholder="{key_ph}"
                  style="width:100%;max-width:520px" autocomplete="off"></div>
         <div style="margin-top:8px"><label>模型（下拉里带「免费额度」标记的不烧钱）</label><br>
           <select name="model_choice" style="width:100%;max-width:520px;padding:9px 10px;
@@ -885,8 +907,119 @@ def analyze_page(symbol: str, name: str, llm_override: dict | None = None) -> di
         return {"error": f"分析失败：{e}"}
 
 
+def _lan_ip() -> str:
+    """取本机对外网卡的 IPv4。UDP connect 不会真的发包，只是让系统选路。"""
+    try:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(("8.8.8.8", 80))
+            return s.getsockname()[0]
+        finally:
+            s.close()
+    except OSError:
+        return ""
+
+
+def _login_page(error: str = "") -> str:
+    """对外分享时挡在门口的登录页。局域网直连不会看到它。"""
+    err = f"<div class='err'>{html.escape(error)}</div>" if error else ""
+    return """<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>需要访问口令</title>
+<style>
+body{margin:0;background:#f5f6f8;color:#1f2328;
+  font:15px/1.7 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+  display:flex;min-height:100vh;align-items:center;justify-content:center}
+.card{background:#fff;border:1px solid #dfe3e8;border-radius:14px;
+  padding:32px 34px;max-width:420px;width:calc(100% - 36px);
+  box-shadow:0 12px 32px rgba(31,35,40,.08)}
+h1{font-size:20px;margin:0 0 6px}
+p{color:#6b7280;font-size:13.5px;margin:0 0 18px}
+input{width:100%;font:inherit;font-size:15px;padding:11px 13px;
+  border:1px solid #dfe3e8;border-radius:10px;outline:none}
+input:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(147,197,253,.28)}
+button{margin-top:14px;width:100%;font:inherit;font-size:15px;font-weight:600;
+  color:#fff;background:#2ca02c;border:0;border-radius:10px;padding:11px;cursor:pointer}
+button:hover{background:#258025}
+.err{background:#fef2f2;border-left:4px solid #ef4444;color:#991b1b;
+  padding:9px 12px;border-radius:6px;font-size:13px;margin-bottom:14px}
+.foot{margin-top:16px;font-size:12px;color:#9aa4b2}
+</style></head><body>
+<div class="card">
+  <h1>访问口令</h1>
+  <p>这台机器上的分析服务仅向受邀访客开放，请输入口令。</p>
+  __ERR__
+  <form method="post" action="/login">
+    <input type="password" name="password" placeholder="请输入口令" autofocus autocomplete="off">
+    <button type="submit">进入</button>
+  </form>
+  <div class="foot">口令通过后本次浏览器有效，服务重启需重新输入。</div>
+</div></body></html>""".replace("__ERR__", err)
+
+
 class Handler(BaseHTTPRequestHandler):
     _sid: str | None = None
+
+    # ---------------- 对外访问的口令网关
+    # 判定「是不是公网来的」不能只看来源 IP：cloudflared/ngrok 这类隧道在本机起进程，
+    # 请求的 client_address 恒为 127.0.0.1，按 IP 判会把所有人都当成内网放行。
+    # 隧道会带上 CF-Connecting-IP / X-Forwarded-For，据此区分。
+    def _via_tunnel(self) -> bool:
+        return bool(self.headers.get("CF-Connecting-IP")
+                    or self.headers.get("CF-Ray")
+                    or self.headers.get("X-Forwarded-For"))
+
+    def _client_is_lan(self) -> bool:
+        ip = (self.client_address[0] if self.client_address else "") or ""
+        if ip in ("::1", "localhost"):
+            return True
+        if ip.startswith(("127.", "10.", "192.168.")):
+            return True
+        if ip.startswith("172."):
+            try:
+                return 16 <= int(ip.split(".")[1]) <= 31
+            except (IndexError, ValueError):
+                return False
+        return False
+
+    def _auth_needed(self) -> bool:
+        if not SITE_PASSWORD:
+            return False
+        if self._via_tunnel():      # 公网隧道一律要口令
+            return True
+        return not self._client_is_lan()
+
+    def _authed(self) -> bool:
+        if not SITE_PASSWORD:
+            return True
+        if not self._auth_needed():
+            return True
+        cookie = self.headers.get("Cookie", "") or ""
+        m = re.search(r"(?:^|;\s*)sp_auth=([A-Za-z0-9_-]{10,64})", cookie)
+        return bool(m and _AUTH_TOKEN and _secrets.compare_digest(m.group(1), _AUTH_TOKEN))
+
+    def _guard(self, path: str) -> bool:
+        """放行返回 True；否则已把登录页发出去，调用方直接 return。"""
+        if path in ("/__local", "/favicon.ico"):
+            return True             # 哨兵端点只回 "local"，不含任何数据
+        if path == "/login":
+            return True
+        if self._authed():
+            return True
+        self._send(_login_page(), code=401)
+        return False
+
+    def _handle_login(self, form: dict) -> None:
+        pw = (form.get("password", [""])[0] or "").strip()
+        if SITE_PASSWORD and _secrets.compare_digest(pw, SITE_PASSWORD):
+            self.send_response(303)
+            self.send_header("Location", "/")
+            self.send_header("Set-Cookie",
+                             f"sp_auth={_AUTH_TOKEN}; Path=/; HttpOnly; SameSite=Lax")
+            self.end_headers()
+            return
+        self._send(_login_page("口令不正确"), code=401)
 
     # ---------------- 会话（cookie 只存随机 id，密钥留在服务端内存）
     def _session(self) -> tuple[str, dict]:
@@ -1081,9 +1214,16 @@ font-size:12px;white-space:pre-wrap;overflow-x:auto}}</style></head><body>
 </body></html>""", code=200)
 
     def do_GET(self):
-        _, sess = self._session()
         parsed = urlparse(self.path)
         path = parsed.path
+        # 口令网关必须挡在最前面：/live /rank /api 都在下面分支里，
+        # 放到 _session() 之后就晚了（公网能直接摸到实时接口）
+        if not self._guard(path):
+            return
+        if path == "/login":
+            self._send(_login_page())
+            return
+        _, sess = self._session()
 
         # ---- 实时跟踪 / 涨幅榜（stockpred.live_web 提供，独立可测） ----
         try:
@@ -1195,15 +1335,24 @@ font-size:12px;white-space:pre-wrap;overflow-x:auto}}</style></head><body>
         self._send(render_result({"error": "页面不存在"}), code=404)
 
     def do_POST(self):
-        _, sess = self._session()
         parsed = urlparse(self.path)
+        # body 只能读一次：口令网关、/api 分支、表单分支都必须复用这一份，
+        # 否则第二次 read 拿到空串，/settings 会静默清空会话
+        n = int(self.headers.get("Content-Length") or 0)
+        body = self.rfile.read(n) if n else b""
+        form = parse_qs(body.decode("utf-8", "replace")) if body else {}
+
+        if parsed.path == "/login":
+            self._handle_login(form)
+            return
+        if not self._guard(parsed.path):
+            return
+        _, sess = self._session()
 
         # ---- 实时链路的 JSON API（/api/settings、/api/llm/*、/api/engine/*） ----
         if parsed.path.startswith("/api/"):
             try:
                 from stockpred import live_web as _live
-                n = int(self.headers.get("Content-Length") or 0)
-                body = self.rfile.read(n) if n else b""
                 res = _live.handle_post(parsed.path, parse_qs(parsed.query), body)
                 if res is None:
                     res = _live.handle_get(parsed.path, parse_qs(parsed.query))
@@ -1224,9 +1373,6 @@ font-size:12px;white-space:pre-wrap;overflow-x:auto}}</style></head><body>
                 self.end_headers()
                 self.wfile.write(raw)
                 return
-
-        n = int(self.headers.get("Content-Length") or 0)
-        form = parse_qs(self.rfile.read(n).decode("utf-8")) if n else {}
 
         def field(k):
             return (form.get(k, [""])[0] or "").strip()
@@ -1275,9 +1421,31 @@ font-size:12px;white-space:pre-wrap;overflow-x:auto}}</style></head><body>
 def main():
     import argparse
 
+    global SITE_PASSWORD, REQUIRE_USER_KEY, _AUTH_TOKEN
+
     ap = argparse.ArgumentParser(description="股价预测网页")
     ap.add_argument("--port", type=int, default=PORT)
+    ap.add_argument("--host", default=HOST,
+                    help="监听地址：127.0.0.1 仅本机；0.0.0.0 允许局域网与隧道访问")
+    ap.add_argument("--password", default=os.environ.get("STOCKPRED_PASSWORD", ""),
+                    help="公网访问口令（隧道来的请求必须输入；局域网直连不用）")
+    ap.add_argument("--require-key", action="store_true",
+                    default=os.environ.get("STOCKPRED_REQUIRE_KEY", "").strip().lower()
+                    in ("1", "true", "yes", "on"),
+                    help="访客必须自带大模型 Key，服务器内置密钥不再兜底")
     args = ap.parse_args()
+
+    SITE_PASSWORD = (args.password or "").strip()
+    REQUIRE_USER_KEY = bool(args.require_key)
+    if SITE_PASSWORD:
+        _AUTH_TOKEN = _secrets.token_urlsafe(24)
+        # 有口令 = 对外分享。live_web 据此拒绝全局配置写入与「立即跑大模型」，
+        # 避免公网访客覆盖机器主人的 Key 或直接烧其额度。
+        os.environ["STOCKPRED_PUBLIC"] = "1"
+    if REQUIRE_USER_KEY:
+        # 主进程与所有子进程一并禁用服务器密钥（llm._key_for 读这个变量）
+        os.environ["STOCKPRED_NO_SERVER_KEY"] = "1"
+
     # 首次运行把依赖目录建好（output 放报告、.cache 放行情缓存），
     # 避免 clone 后第一次点击分析就因目录缺失报 500。
     for d in (config.OUTPUT_DIR, getattr(config, "CACHE_DIR", ".cache")):
@@ -1285,8 +1453,16 @@ def main():
             os.makedirs(d, exist_ok=True)
         except OSError:
             pass
-    srv = ThreadingHTTPServer((HOST, args.port), Handler)
-    print(f"✓ 页面已启动： http://{HOST}:{args.port}  （Ctrl+C 退出）")
+    srv = ThreadingHTTPServer((args.host, args.port), Handler)
+
+    print(f"✓ 页面已启动： http://{args.host}:{args.port}  （Ctrl+C 退出）")
+    if args.host == "0.0.0.0":
+        lan = _lan_ip()
+        if lan:
+            print(f"  局域网地址： http://{lan}:{args.port}")
+        print(f"  公网隧道：   cloudflared tunnel --url http://127.0.0.1:{args.port}")
+    print(f"  访问口令：   {'已启用（公网必须输入）' if SITE_PASSWORD else '未启用（谁都能进）'}")
+    print(f"  大模型 Key： {'仅认访客自带的 Key（不烧本机额度）' if REQUIRE_USER_KEY else '访客留空则用服务器内置 Key'}")
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

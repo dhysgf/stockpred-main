@@ -40,3 +40,7 @@ desktop.ini
 
 # ---- 临时抓取/API 结果 ----
 ._*
+
+# ---- 本地二进制（cloudflared 隧道，约 41MB，不进仓库）----
+.bin/
+public_url.txt

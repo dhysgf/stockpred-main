@@ -23,6 +23,7 @@ Key 输入 → 跟踪 的产品流（按用户要求）
 from __future__ import annotations
 
 import json
+import os
 import time
 import urllib.parse
 
@@ -30,6 +31,29 @@ from . import db, rank_fetcher
 from . import llm_live
 
 # 延迟导入：live_engine / realtime 只有真正用到才加载
+
+# 对外分享模式（web.py 带口令启动时置位）。这一模式下**全局配置写入一律拒绝**：
+# /api/settings 写的是 data/stockpred.db 里的唯一一份配置，公网任何访客都能覆盖
+# 机器主人的 Key；/api/llm/run 则会直接用那份配置去烧主人的额度。
+# 访客要跑大模型请走「股票深度分析」页（/classic），那里按会话隔离、不落库。
+PUBLIC_MODE = os.environ.get("STOCKPRED_PUBLIC", "").strip() in ("1", "true", "yes", "on")
+
+# 对外模式同时跟踪的股票上限：每个引擎一个 3 秒轮询线程，不限的话
+# 访客多点几十只就把本机线程和行情请求堆满
+MAX_ENGINES_PUBLIC = 6
+
+# 对外模式允许访客把 Key 发往的服务商（防止 test 接口被当成任意地址的探针）
+_ALLOWED_LLM_HOSTS = ("dashscope.aliyuncs.com", "api.deepseek.com", "open.bigmodel.cn")
+
+
+def _llm_host_allowed(base_url: str) -> bool:
+    if not base_url:
+        return True                     # 留空 = 用预设服务商
+    try:
+        host = (urllib.parse.urlparse(base_url).hostname or "").lower()
+    except ValueError:
+        return False
+    return any(host == h or host.endswith("." + h) for h in _ALLOWED_LLM_HOSTS)
 
 
 def _json_bytes(obj, status: int = 200):
@@ -75,12 +99,30 @@ def handle_post(path: str, qs: dict, body: bytes):
     except Exception:
         payload = {}
     if path == "/api/settings":
+        if PUBLIC_MODE:
+            return _json_bytes({
+                "ok": False,
+                "note": "对外分享模式：不写入全局大模型配置（那会覆盖机器主人的 Key）。"
+                        "要跑大模型请打开「股票深度分析」页，在那里填你自己的 Key，"
+                        "按会话隔离、不落库。",
+            }, status=403)
         return _json_bytes(llm_live.save_config(payload))
     if path == "/api/llm/test":
         # 把页面上正在输入的地址/模型/Key 一起带过去：用户改了输入框却测到旧 Key
         # 是最容易"测着成功、跑起来失败"的坑。
+        if PUBLIC_MODE and not _llm_host_allowed(str(payload.get("base_url") or "")):
+            return _json_bytes({
+                "ok": False,
+                "note": "对外分享模式：只允许请求预设的模型服务商（通义千问 / DeepSeek / 智谱）。",
+            }, status=403)
         return _json_bytes(llm_live.test_connection(payload))
     if path == "/api/llm/run":
+        if PUBLIC_MODE:
+            return _json_bytes({
+                "ok": False,
+                "note": "对外分享模式：已关闭「立即跑一次大模型」——它会用机器主人配置的 Key。"
+                        "请用「股票深度分析」页，Key 按会话隔离。",
+            }, status=403)
         from .live_engine import get_engine
         e = get_engine(q.get("code", ""), autostart=False)
         return _json_bytes(e.run_llm_now() if getattr(e, "state", None) or e.thread.is_alive()
@@ -105,6 +147,15 @@ def _api_live(q: dict):
     autostart = str(q.get("start", "0")) in ("1", "true", "yes")
     e = get_engine(code, autostart=False)
     started = e.thread.is_alive() or bool(e.state)
+    if autostart and not started and PUBLIC_MODE:
+        from .live_engine import engines_status
+        n = len(engines_status())
+        if n >= MAX_ENGINES_PUBLIC:
+            return _json_bytes({
+                "ok": False,
+                "note": f"对外分享模式最多同时跟踪 {MAX_ENGINES_PUBLIC} 只（当前 {n} 只）。"
+                        "先停掉不看的再开新的。",
+            }, 429)
     if autostart and not started:
         e = get_engine(code, autostart=True)
         started = True
@@ -631,12 +682,15 @@ def _page_home(q: dict) -> str:
 <div class="card">
   <h2>入口</h2>
   <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <a class="tag" href="/classic" style="text-decoration:none">📊 股票深度分析（形态/量能/新闻政策/拐点）</a>
     <a class="tag" href="/rank" style="text-decoration:none">📈 涨幅榜（东财 · A股/科创板 前 50）</a>
     <a class="tag" href="/live?code=600519" style="text-decoration:none">⏱ 实时跟踪（含大模型 Key 设置）</a>
     <a class="tag" href="/api/db" style="text-decoration:none">🗄 数据库概览（JSON）</a>
   </div>
-  <div class="muted" style="margin-top:8px">流程：涨幅榜点任意一行 → 进入实时跟踪页 → 填供应商/模型/Key 保存 → 点「开始实时跟踪」。
-  不填 Key 也能跟踪，其余 13 路量化专家照常工作（新闻面改用本地词典情绪）。</div>
+  <div class="muted" style="margin-top:8px"><b>想跑分析</b>：点「股票深度分析」→ 输入 6 位代码 →
+  在页面下方「大模型设置」里填<b>你自己的 Key</b> → 提交。一次完整分析 3~6 分钟（训练多模型），
+  人多时会排队。<b>不填 Key 也能跑</b>：量化预测照常，新闻/政策那段改走本地词典情绪。
+  <br><b>想看盘中</b>：涨幅榜点任意一行 → 进入实时跟踪页（3 秒刷新、1/3/5 分钟预测）。</div>
 </div>
 <div class="card">
   <h2>已入库数据</h2>
