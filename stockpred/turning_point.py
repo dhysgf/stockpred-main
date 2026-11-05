@@ -24,6 +24,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.metrics import roc_auc_score
 
+from ._parallel import forest_backend
 import config
 
 
@@ -163,7 +164,9 @@ class TurningPointModel:
                 r = RandomForestRegressor(n_estimators=200, max_depth=9,
                                           min_samples_leaf=20, random_state=config.RANDOM_STATE,
                                           n_jobs=-1)
-                r.fit(X, y)
+                # 线程后端，避免 Windows 多进程反复重导入 sklearn（见 _parallel.py）
+                with forest_backend():
+                    r.fit(X, y)
                 self.regs[key[1]] = r
             else:
                 if y.nunique() < 2:
@@ -174,7 +177,8 @@ class TurningPointModel:
                 c = RandomForestClassifier(n_estimators=300, max_depth=9,
                                            min_samples_leaf=20,
                                            random_state=config.RANDOM_STATE, n_jobs=-1)
-                c.fit(X, y)
+                with forest_backend():
+                    c.fit(X, y)
                 self.clfs[key] = c
                 self.base[key] = float(y.mean())
         self.horizons = sorted({k[1] for k in self.clfs})

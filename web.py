@@ -1324,13 +1324,23 @@ font-size:12px;white-space:pre-wrap;overflow-x:auto}}</style></head><body>
         if self._serve_static(path):
             return
         if parsed.path == "/analyze":
+            # ⚠ 这条路由的旧实现是**在当前服务线程里同步训练**：一次默认分析要跑
+            #   HORIZONS=[1,5,7,30]，实测 99 秒（涨跌模型 30s/周期 + 拐点模型 50s），
+            #   期间整个 web.py 进程被占住，浏览器 300 秒拿不到一个字节 ——
+            #   用户看到的就是「点深度分析没反应」。
+            #   现在转交给 /report 的异步队列：独立子进程跑（不阻塞服务）、
+            #   带等待页 + 实时进度 + 自动跳转 + 并发限流 + 失败熔断 + 结果落盘。
             qs = parse_qs(parsed.query)
-            code = (qs.get("code", [""])[0] or "").strip()
-            name = (qs.get("name", [""])[0] or "").strip()
-            if not code:
+            raw = (qs.get("code", [""])[0] or "").strip()
+            if not raw:
                 self._send(render_home(sess))
                 return
-            self._send(render_result(analyze_page(code, name, self._override_of(sess))))
+            digits = re.sub(r"\D", "", raw)[-6:]
+            if len(digits) != 6:
+                self._send(render_result(
+                    {"error": f"「{raw}」不是 6 位 A 股代码，请检查后重试"}))
+                return
+            self._redirect(f"/report?code={digits}")
             return
         self._send(render_result({"error": "页面不存在"}), code=404)
 

@@ -14,6 +14,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 from .features import add_technicals, last_feature_row, apply_zscore_cols
+from ._parallel import forest_backend
 import config  # 项目根目录配置（运行 run.py / web.py 时已加入 sys.path）
 
 
@@ -35,19 +36,23 @@ class ForecastModel:
 
     def fit(self, samples: dict):
         """samples: {h: (X, y_dir, y_ret)}。"""
-        for h, (X, y_dir, y_ret) in samples.items():
-            if len(X) < 20:
-                continue
-            self.regs[h] = RandomForestRegressor(
-                n_estimators=250, max_depth=10, min_samples_leaf=5,
-                random_state=config.RANDOM_STATE, n_jobs=-1,
-            )
-            self.clfs[h] = RandomForestClassifier(
-                n_estimators=250, max_depth=10, min_samples_leaf=5,
-                class_weight="balanced", random_state=config.RANDOM_STATE, n_jobs=-1,
-            )
-            self.regs[h].fit(X, y_ret)
-            self.clfs[h].fit(X, y_dir)
+        # 线程后端：n_jobs=-1 保持不变，但不再 fork 进程。
+        # Windows 上多进程会让每个 worker 重新 import sklearn 并复制训练矩阵，
+        # 8 次 fit 下来 web 进程能涨到 4GB、单次分析数分钟不返回（详见 _parallel.py）。
+        with forest_backend():
+            for h, (X, y_dir, y_ret) in samples.items():
+                if len(X) < 20:
+                    continue
+                self.regs[h] = RandomForestRegressor(
+                    n_estimators=250, max_depth=10, min_samples_leaf=5,
+                    random_state=config.RANDOM_STATE, n_jobs=-1,
+                )
+                self.clfs[h] = RandomForestClassifier(
+                    n_estimators=250, max_depth=10, min_samples_leaf=5,
+                    class_weight="balanced", random_state=config.RANDOM_STATE, n_jobs=-1,
+                )
+                self.regs[h].fit(X, y_ret)
+                self.clfs[h].fit(X, y_dir)
         self.horizons = sorted(self.regs.keys())
         self.fit_ok = bool(self.horizons)
 
