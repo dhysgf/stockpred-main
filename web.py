@@ -370,7 +370,7 @@ FAVORITES = [
 
 PAGE_HEAD = """<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>股价走势预测 · 形态/量能/新闻/拐点</title>
+<title>深度分析 · 形态/量能/新闻政策/拐点</title>
 <style>
  *{box-sizing:border-box}
  body{font-family:"Microsoft YaHei",SimHei,system-ui,sans-serif;margin:0;background:#f5f7fa;color:#222}
@@ -766,7 +766,7 @@ def _mask(k: str) -> str:
 
 def render_home(sess: dict | None = None, notice: str = "") -> str:
     sess = sess or {}
-    favs = " ".join(f"<a href='/analyze?code={c}&name={html.escape(n)}'>{html.escape(n)} {c}</a>"
+    favs = " ".join(f"<a href='/report?code={c}'>{html.escape(n)} {c}</a>"
                     for c, n in FAVORITES)
     st = llm_status()
     has_own = bool(sess.get("api_key"))
@@ -812,23 +812,21 @@ def render_home(sess: dict | None = None, notice: str = "") -> str:
     model_options = "".join(opts)
 
     body = f"""{notice_html}<div class="card">
-      <h2>股价走势预测 · 形态 / 量能 / 新闻政策 / 拐点</h2>
-      <div style="margin-bottom:10px">
-        <a href="/rank"><b>📈 涨幅榜（东财 · A股/科创板 Top50）</b></a>　·　
-        <a href="/live?code={config.DEFAULT_SYMBOL}"><b>⚡ 实时分钟级跟踪</b></a>
-        <span class="muted">（3 秒刷新、未来 1/3/5 分钟预测、日内拐点、大模型可选参与）</span>
-      </div>
-      <div class="muted" style="margin-bottom:10px">输入<b>任意 A 股 6 位代码</b>即可预测
-      （沪深300 池内外的股票都支持，池外会自动并入训练池）。</div>
-      <form method="get" action="/analyze">
+      <h2>深度分析</h2>
+      <div class="muted">分析已改为独立的报告页（结论 / 目标价 / 买卖点 / 图表），
+      从这里输入代码即可生成；跑的时候有进度页，不用干等白屏。</div>
+      <form method="get" action="/report" style="margin-top:10px">
         <div><label>股票代码</label><br>
           <input type="text" name="code" placeholder="如 600519 / 000001 / 688836" required></div>
-        <div><label>名称（可选）</label><br>
-          <input type="text" name="name" placeholder="如 贵州茅台"></div>
-        <div><button type="submit">查询并预测</button></div>
+        <div><button type="submit">生成报告</button></div>
       </form>
       <div class="fav" style="margin-top:12px">热门：{favs}</div>
-      <div style="margin-top:14px">{llm_line}</div>
+      <div style="margin-top:10px" class="muted">
+        <a href="/rank">📈 涨幅榜</a>　·　
+        <a href="/live?code={config.DEFAULT_SYMBOL}">⚡ 实时跟踪（可换股票）</a>　·　
+        <a href="/">🏠 首页</a>
+      </div>
+      <div style="margin-top:12px">{llm_line}</div>
     </div>
 
     <div class="card">

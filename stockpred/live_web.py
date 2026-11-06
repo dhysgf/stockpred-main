@@ -290,6 +290,11 @@ def _page_live(q: dict) -> str:
 <title>实时跟踪 {code}</title><style>{_CSS}</style></head><body>
 <div class="wrap">
 <div class="nav"><a href="/rank">← 涨幅榜</a><a href="/">首页</a>
+<form onsubmit="return jumpCode(event)" style="display:flex;gap:6px;align-items:center;margin-left:6px">
+  <input id="codeIn" placeholder="换股票，输入 6 位代码" maxlength="6" inputmode="numeric"
+         autocomplete="off" style="width:176px">
+  <button type="submit" class="ghost">切换</button>
+</form>
 <span class="muted" id="modeBadge"></span></div>
 <h1><span id="sname">…</span> <span class="muted" id="scode">{code}</span>
 <span class="price" id="price">--</span>
@@ -361,6 +366,20 @@ const CODE = new URLSearchParams(location.search).get('code') || '{code}';
 let providerSel = document.getElementById('llmProvider');
 let PRESETS = {{}};
 let started=false, timer=null;
+
+// 换股票：这个页面原来只能从涨幅榜点进来，想直接看某只票没有入口。
+// 输入 6 位数字回车即跳转；非数字（sh600519 / 600519.SH）也能清洗掉。
+function jumpCode(e){{
+  if(e) e.preventDefault();
+  const el = document.getElementById('codeIn');
+  const v = (el.value||'').replace(/\\D/g,'');
+  if(v.length!==6){{
+    el.value=''; el.placeholder='要 6 位数字，如 600519'; el.focus();
+    return false;
+  }}
+  location.href = '/live?code=' + v;
+  return false;
+}}
 
 function fillPresets(cfg){{
   PRESETS = {{}};
@@ -652,7 +671,10 @@ async function loadDaily(){{
   }}catch(e){{dayLoaded=false;}}
 }}
 loadCfg();
-if(new URLSearchParams(location.search).get('auto')==='1') startTrack();
+// 带代码进来就自动开始跟踪。原先要再点一次「开始实时跟踪」才有数据，
+// 打开只看得到「…  --」，很容易被当成页面没反应。
+// 想省电/省配额可显式加 ?auto=0 关掉。
+if(new URLSearchParams(location.search).get('auto')!=='0') startTrack();
 </script></body></html>"""
 
 
@@ -682,15 +704,16 @@ def _page_home(q: dict) -> str:
 <div class="card">
   <h2>入口</h2>
   <div style="display:flex;gap:10px;flex-wrap:wrap">
-    <a class="tag" href="/classic" style="text-decoration:none">📊 股票深度分析（形态/量能/新闻政策/拐点）</a>
+    <a class="tag" href="/report?code=600519" style="text-decoration:none">📊 深度分析报告（结论 / 目标价 / 买卖点）</a>
     <a class="tag" href="/rank" style="text-decoration:none">📈 涨幅榜（东财 · A股/科创板 前 50）</a>
-    <a class="tag" href="/live?code=600519" style="text-decoration:none">⏱ 实时跟踪（含大模型 Key 设置）</a>
+    <a class="tag" href="/live?code=600519" style="text-decoration:none">⏱ 实时跟踪（可换股票）</a>
+    <a class="tag" href="/classic" style="text-decoration:none">⚙ 大模型 Key 设置</a>
     <a class="tag" href="/api/db" style="text-decoration:none">🗄 数据库概览（JSON）</a>
   </div>
-  <div class="muted" style="margin-top:8px"><b>想跑分析</b>：点「股票深度分析」→ 输入 6 位代码 →
-  在页面下方「大模型设置」里填<b>你自己的 Key</b> → 提交。一次完整分析 3~6 分钟（训练多模型），
+  <div class="muted" style="margin-top:8px"><b>想跑深度分析</b>：点「深度分析报告」→ 输入 6 位代码 →
+  自动跳到报告页，等待期间显示进度，跑完自动打开。一次完整分析 3~5 分钟（训练多模型），
   人多时会排队。<b>不填 Key 也能跑</b>：量化预测照常，新闻/政策那段改走本地词典情绪。
-  <br><b>想看盘中</b>：涨幅榜点任意一行 → 进入实时跟踪页（3 秒刷新、1/3/5 分钟预测）。</div>
+  <br><b>想看盘中</b>：点「实时跟踪」，页面顶部有输入框可随时换股票（3 秒刷新、1/3/5 分钟预测）。</div>
 </div>
 <div class="card">
   <h2>已入库数据</h2>

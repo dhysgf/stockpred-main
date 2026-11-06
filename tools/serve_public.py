@@ -32,6 +32,22 @@ URL_RE = re.compile(r"https://[a-z0-9][a-z0-9-]*\.trycloudflare\.com")
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
+def _pick_python() -> str:
+    """优先用项目内 .venv 的解释器启动 web.py。
+
+    为什么：依赖（pandas/sklearn/matplotlib）装在哪，就用哪的解释器。
+    宿主机的 Python 环境被重置过（实测一夜之间四个包全没了，
+    ModuleNotFoundError: No module named 'matplotlib'），而 .venv 在项目目录里，
+    不会被外部清理工具动到，是唯一稳定的选择。
+    """
+    for rel in (os.path.join(".venv", "Scripts", "python.exe"),
+                os.path.join(".venv", "bin", "python")):
+        p = os.path.join(ROOT, rel)
+        if os.path.exists(p):
+            return p
+    return sys.executable
+
+
 def _pump(proc: subprocess.Popen, on_url=None, prefix: str = "") -> None:
     """逐行转发子进程输出；顺带把隧道域名挑出来。"""
     assert proc.stdout is not None
@@ -63,7 +79,8 @@ def main() -> None:
     password = (args.password or "").strip() or secrets.token_urlsafe(6)
     host = "0.0.0.0" if args.lan else "127.0.0.1"
 
-    cmd = [sys.executable, os.path.join(ROOT, "web.py"),
+    py = _pick_python()
+    cmd = [py, os.path.join(ROOT, "web.py"),
            "--host", host, "--port", str(args.port), "--password", password]
     if not args.open_key:
         cmd.append("--require-key")
@@ -74,6 +91,7 @@ def main() -> None:
     print(f"  访问口令： {password}")
     print(f"  大模型 Key： {'访客可留空用服务器 Key' if args.open_key else '只认访客自带的 Key'}")
     print(f"  监听地址： {host}:{args.port}")
+    print(f"  解释器：   {py}")
     print("=" * 66)
 
     web = subprocess.Popen(cmd, cwd=ROOT,

@@ -44,3 +44,6 @@ desktop.ini
 # ---- 本地二进制（cloudflared 隧道，约 41MB，不进仓库）----
 .bin/
 public_url.txt
+
+# ---- 项目内虚拟环境（依赖装在这里，避免宿主环境重置丢失）----
+.venv/
